@@ -1,7 +1,15 @@
-
+import React from 'react';
+import AppRoutes from './routes/AppRoutes';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
-  return <h1>Inventory System</h1>;
+  return (
+    <AuthProvider>
+      <div className="App">
+        <AppRoutes />
+      </div>
+    </AuthProvider>
+  );
 }
 
 export default App;
