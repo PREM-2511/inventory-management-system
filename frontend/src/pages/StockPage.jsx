@@ -1,21 +1,183 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 
-function StockPage() {
-  return (
-    <MainLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Stock Movements</h1>
-          <p className="text-gray-400">Track and manage stock in/out transactions</p>
-        </div>
+const INITIAL_MOVEMENTS = [
+  { id: 1, type: 'IN', product: 'Laptop Pro 15"', qty: 20, date: '2026-05-28 12:10', user: 'Admin User' },
+  { id: 2, type: 'OUT', product: 'USB-C Cable', qty: 5, date: '2026-05-28 10:15', user: 'Admin User' },
+  { id: 3, type: 'IN', product: 'Office Chair', qty: 8, date: '2026-05-28 08:30', user: 'Admin User' },
+  { id: 4, type: 'OUT', product: 'A4 Paper Box', qty: 12, date: '2026-05-27 15:45', user: 'Manager User' },
+];
 
-        <div className="bg-[#0c1328]/60 border border-gray-800/80 rounded-2xl p-8 backdrop-blur-sm text-center">
-          <p className="text-gray-400 mb-4">Stock movement tracking interface coming soon</p>
-          <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium transition-colors">
-            Record Movement
+function StockPage() {
+  const [movements, setMovements] = useState(INITIAL_MOVEMENTS);
+  const [filterType, setFilterType] = useState('ALL');
+  
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ type: 'IN', product: 'Laptop Pro 15"', qty: 1 });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newMovement = {
+      id: Date.now(),
+      type: formData.type,
+      product: formData.product,
+      qty: Number(formData.qty),
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      user: 'Admin User'
+    };
+    setMovements([newMovement, ...movements]);
+    setIsModalOpen(false);
+  };
+
+  const filteredMovements = movements.filter(m => {
+    if (filterType === 'ALL') return true;
+    return m.type === filterType;
+  });
+
+  return (
+    <MainLayout title="Stock Movements">
+      <div className="p-6 relative z-10 space-y-6">
+        
+        {/* Controls bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-[#0b1224]/85 border border-[#1e293b]/70 p-4 rounded-2xl shadow-lg backdrop-blur-sm">
+          {/* Tabs */}
+          <div className="flex gap-2 p-1 bg-slate-900/60 border border-slate-800 rounded-xl max-w-xs">
+            {['ALL', 'IN', 'OUT'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setFilterType(t)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  filterType === t
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => {
+              setFormData({ type: 'IN', product: 'Laptop Pro 15"', qty: 5 });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-xs font-bold leading-tight transition-all cursor-pointer border border-blue-400/20 text-white shadow-lg shadow-blue-500/10"
+          >
+            <span>+ Record movement</span>
           </button>
         </div>
+
+        {/* Movements Table */}
+        <div className="bg-[#0b1224]/85 border border-[#1e293b]/70 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[#1e293b]/70 bg-slate-900/40 text-slate-400 font-mono">
+                  <th className="p-4 uppercase font-semibold tracking-wider">Type</th>
+                  <th className="p-4 uppercase font-semibold tracking-wider">Product</th>
+                  <th className="p-4 uppercase font-semibold tracking-wider text-center">Quantity</th>
+                  <th className="p-4 uppercase font-semibold tracking-wider">Date & Time</th>
+                  <th className="p-4 uppercase font-semibold tracking-wider">Logged By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/40 font-medium">
+                {filteredMovements.length > 0 ? (
+                  filteredMovements.map((movement) => (
+                    <tr key={movement.id} className="hover:bg-slate-900/10 transition-colors">
+                      <td className="p-4">
+                        <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase font-mono tracking-wider inline-block ${
+                          movement.type === 'IN'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        }`}>
+                          {movement.type}
+                        </span>
+                      </td>
+                      <td className="p-4 font-bold text-slate-200 text-sm">{movement.product}</td>
+                      <td className="p-4 text-center font-bold text-white font-mono text-sm">{movement.qty}</td>
+                      <td className="p-4 text-slate-400 font-mono">{movement.date}</td>
+                      <td className="p-4 text-slate-400">{movement.user}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="p-8 text-center text-slate-500 font-semibold">
+                      No stock movements found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Modal Form Overlay */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="w-full max-w-sm bg-[#0c1328] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-2xl">
+              <h3 className="text-base font-bold text-white tracking-tight">Record Stock Movement</h3>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Movement Type</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs cursor-pointer"
+                  >
+                    <option value="IN">IN (Receive Stock)</option>
+                    <option value="OUT">OUT (Dispatch Stock)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Select Product</label>
+                  <select
+                    value={formData.product}
+                    onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs cursor-pointer"
+                  >
+                    <option>Laptop Pro 15"</option>
+                    <option>USB-C Hub 7-port</option>
+                    <option>Ergonomic Chair</option>
+                    <option>A4 Paper (500 sheets)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Quantity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={formData.qty}
+                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 border border-gray-800 bg-[#080d1a] hover:bg-slate-900/60 rounded-xl text-xs font-bold transition-all cursor-pointer text-slate-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold text-white border border-blue-400/20 shadow-lg shadow-blue-500/10 cursor-pointer"
+                  >
+                    Log Movement
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </MainLayout>
   );

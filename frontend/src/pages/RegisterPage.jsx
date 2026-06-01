@@ -65,7 +65,7 @@ const RegisterPage = () => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold tracking-tight block">StockIQ</h2>
-                <span className="text-[10px] text-gray-500 tracking-widest uppercase block">Inventory</span>
+                <span className="text-[10px] text-gray-500 tracking-widest uppercase block">Smart Inventory</span>
               </div>
             </div>
 

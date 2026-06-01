@@ -28,7 +28,7 @@ const Navbar = () => {
           </div>
           <div>
             <span className="text-xl font-display font-black tracking-tight block text-white">StockIQ</span>
-            <span className="text-[9px] text-slate-500 font-mono tracking-[0.2em] uppercase block -mt-1 font-bold">Inventory</span>
+            <span className="text-[9px] text-slate-500 font-mono tracking-[0.15em] uppercase block -mt-1 font-bold">Smart Inventory</span>
           </div>
         </div>
 
@@ -112,7 +112,10 @@ const Navbar = () => {
                   <rect x="14" y="14" width="6" height="6" rx="1.5" strokeWidth={2.5} />
                 </svg>
               </div>
-              <span className="font-display font-black text-sm text-white tracking-tight">StockIQ</span>
+              <div>
+                <span className="font-display font-black text-sm text-white tracking-tight block leading-none">StockIQ</span>
+                <span className="text-[8px] text-slate-500 font-mono tracking-wider uppercase block mt-0.5 font-bold">Smart Inventory</span>
+              </div>
             </div>
             <button
               onClick={() => setMobileMenuOpen(false)}
