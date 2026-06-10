@@ -6,8 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class InventoryBackendApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(InventoryBackendApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(InventoryBackendApplication.class, args);
+  }
 }
