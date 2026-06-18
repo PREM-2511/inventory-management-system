@@ -32,12 +32,16 @@ public class ExceptionHandlers {
         .getFieldErrors()
         .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
 
+    String firstError = ex.getBindingResult().getFieldErrors().isEmpty()
+        ? "Invalid input data"
+        : ex.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
+
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .header("X-Reason", "Bad Request")
         .body(
             new ErrorMessage(
+                firstError,
                 "Validation Error",
-                "Invalid input data",
                 HttpStatus.BAD_REQUEST,
                 400,
                 "INV0002",
@@ -61,8 +65,8 @@ public class ExceptionHandlers {
         .header("X-Reason", "Bad Request")
         .body(
             new ErrorMessage(
-                "Bad Request",
                 ex.getMessage(),
+                "Bad Request",
                 HttpStatus.BAD_REQUEST,
                 400,
                 "INV0002",
