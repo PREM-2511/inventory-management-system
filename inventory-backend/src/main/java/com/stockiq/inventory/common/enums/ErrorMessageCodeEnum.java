@@ -33,6 +33,8 @@ public enum ErrorMessageCodeEnum {
 
   // User related
   USER_NOT_FOUND("USER_NOT_FOUND"),
+  USER_DUPLICATE("USER_DUPLICATE"),
+  LOGIN_FAILED("LOGIN_FAILED"),
 
   // System related
   DATA_NOT_FOUND("DATA_NOT_FOUND"),

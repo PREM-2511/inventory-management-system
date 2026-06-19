@@ -28,47 +28,62 @@ public class UserRepositoryImpl implements UserRepository {
     this.jdbcTemplate = jdbcTemplate;
   }
 
+  /**
+   * Save User
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param user User
+   * @return long
+   */
   @Override
   public long save(String correlationId, String logKey, User user) {
+
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
     String sql =
         """
         INSERT INTO users
         (
-          full_name,
-          company_name,
-          email,
-          password,
-          role_id,
-          created_by,
-          created_at
+            full_name,
+            company_name,
+            email,
+            password,
+            role_id,
+            created_by,
+            created_at
         )
         VALUES
         (
-          :fullName,
-          :companyName,
-          :email,
-          :password,
-          :roleId,
-          :createdBy,
-          :createdAt
+            :fullName,
+            :companyName,
+            :email,
+            :password,
+            :roleId,
+            :createdBy,
+            :createdAt
         )
         """;
 
     KeyHolder keyHolder = new GeneratedKeyHolder();
 
     jdbcTemplate.update(
-        sql,
-        new BeanPropertySqlParameterSource(user),
-        keyHolder,
-        new String[] {"id"});
+        sql, new BeanPropertySqlParameterSource(user), keyHolder, new String[] {"id"});
 
     return keyHolder.getKey() != null ? keyHolder.getKey().longValue() : 0L;
   }
 
+  /**
+   * Find User By Email
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param email String
+   * @return Optional<User>
+   */
   @Override
   public Optional<User> findByEmail(String correlationId, String logKey, String email) {
+
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
     String sql = SELECT_ALL + " WHERE email = :email";
@@ -80,5 +95,33 @@ public class UserRepositoryImpl implements UserRepository {
             BeanPropertyRowMapper.newInstance(User.class));
 
     return users.stream().findFirst();
+  }
+
+  /**
+   * Update User
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param user User
+   * @return int
+   */
+  @Override
+  public int update(String correlationId, String logKey, User user) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql =
+        """
+        UPDATE users
+        SET full_name = :fullName,
+            company_name = :companyName,
+            email = :email,
+            password = :password,
+            updated_by = :updatedBy,
+            updated_at = :updatedAt
+        WHERE id = :id
+        """;
+
+    return jdbcTemplate.update(sql, new BeanPropertySqlParameterSource(user));
   }
 }
