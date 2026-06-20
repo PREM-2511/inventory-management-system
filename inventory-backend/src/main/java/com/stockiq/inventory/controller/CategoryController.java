@@ -2,6 +2,7 @@ package com.stockiq.inventory.controller;
 
 import com.stockiq.inventory.common.enums.HttpStatusCodeEnum;
 import com.stockiq.inventory.common.enums.category.Status;
+import com.stockiq.inventory.common.response.category.CategoryDetails;
 import com.stockiq.inventory.common.response.category.CreateCategoryResponse;
 import com.stockiq.inventory.common.response.category.DeleteCategoryResponse;
 import com.stockiq.inventory.common.response.category.UpdateCategoryResponse;
@@ -12,6 +13,7 @@ import com.stockiq.inventory.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -68,12 +70,12 @@ public class CategoryController {
    * @param size int
    * @param search String
    * @param status Status
-   * @return ResponseEntity<PageResponse<CategoryDto>>
+   * @return ResponseEntity<PageResponse<CategoryDetails>>
    */
   @GetMapping
-  public ResponseEntity<PageResponse<CategoryDto>> list(
+  public ResponseEntity<PageResponse<CategoryDetails>> list(
       @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId,
-      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "", required = false) String search,
       @RequestParam(required = false) Status status) {
@@ -118,16 +120,17 @@ public class CategoryController {
   public ResponseEntity<UpdateCategoryResponse> update(
       @PathVariable long id,
       @RequestBody @Valid CategoryDto categoryDto,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId) {
+      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId,
+      Authentication authentication) {
 
     String logKey = MAIN_LOG_KEY + "UPDATE";
 
-    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
+    String username = authentication.getName();
 
-    categoryService.update(correlationId, logKey, categoryDto, id);
+    categoryService.update(correlationId, logKey, categoryDto, id, username);
 
-    return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue()))
-        .body(UpdateCategoryResponse.builder().message("Category updated successfully").build());
+    return ResponseEntity.ok(
+        UpdateCategoryResponse.builder().message("Category updated successfully").build());
   }
 
   /**
