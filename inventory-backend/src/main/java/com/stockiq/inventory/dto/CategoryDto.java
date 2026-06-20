@@ -12,7 +12,7 @@ import lombok.*;
 @Builder
 public class CategoryDto {
 
-  private long id;
+  private Long id;
 
   @NotBlank(message = "Category name is required")
   @Pattern(
@@ -24,12 +24,8 @@ public class CategoryDto {
   private String icon;
 
   private Status status;
-
   private String createdAt;
-
   private String createdBy;
-
   private String updatedAt;
-
   private String updatedBy;
 }

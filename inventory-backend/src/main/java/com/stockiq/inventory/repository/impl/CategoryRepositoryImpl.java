@@ -82,7 +82,6 @@ public class CategoryRepositoryImpl implements CategoryRepository {
    * @param logKey String
    * @param category Category
    * @return int
-   * @throws Exception if an error occurs during the operation
    */
   @Override
   public int update(String correlationId, String logKey, Category category) {
@@ -91,16 +90,25 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     String sql =
         """
-                UPDATE categories
-                SET name = :name,
-                    icon = :icon,
-                    status = :status,
-                    updated_by = :updatedBy,
-                    updated_at = :updatedAt
-                WHERE id = :id
-                """;
+        UPDATE categories
+        SET name = :name,
+            icon = :icon,
+            status = :status,
+            updated_by = :updatedBy,
+            updated_at = :updatedAt
+        WHERE id = :id
+        """;
 
-    return jdbcTemplate.update(sql, new BeanPropertySqlParameterSource(category));
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("id", category.getId())
+            .addValue("name", category.getName())
+            .addValue("icon", category.getIcon())
+            .addValue("status", category.getStatus())
+            .addValue("updatedBy", category.getUpdatedBy())
+            .addValue("updatedAt", category.getUpdatedAt());
+
+    return jdbcTemplate.update(sql, params);
   }
 
   /**
@@ -172,14 +180,14 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     sql.append(" ORDER BY name ASC LIMIT :limit OFFSET :offset ");
 
     params.addValue("limit", size);
-    params.addValue("offset", page * size);
+    params.addValue("offset", (page - 1) * size);
 
     return jdbcTemplate.query(
         sql.toString(), params, BeanPropertyRowMapper.newInstance(Category.class));
   }
 
   /**
-   * Count All Categories
+   * Count all categories.
    *
    * @param correlationId String
    * @param logKey String
@@ -206,6 +214,31 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     Long count = jdbcTemplate.queryForObject(sql.toString(), params, Long.class);
 
     return count != null ? count : 0L;
+  }
+
+  /**
+   * Find Category by Name.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param name String
+   * @return Optional<Category>
+   * @throws Exception if an error occurs during the operation
+   */
+  @Override
+  public Optional<Category> findByName(String correlationId, String logKey, String name) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = SELECT_ALL + " WHERE name = :name";
+
+    List<Category> categories =
+        jdbcTemplate.query(
+            sql,
+            new MapSqlParameterSource("name", name),
+            BeanPropertyRowMapper.newInstance(Category.class));
+
+    return categories.stream().findFirst();
   }
 
   private CategoryDto toDto(Category category) {

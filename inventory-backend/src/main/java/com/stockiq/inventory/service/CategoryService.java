@@ -1,8 +1,11 @@
 package com.stockiq.inventory.service;
 
 import com.stockiq.inventory.common.enums.category.Status;
+import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
+import com.stockiq.inventory.common.response.category.CategoryDetails;
 import com.stockiq.inventory.common.util.PageResponse;
 import com.stockiq.inventory.dto.CategoryDto;
+import com.stockiq.inventory.entity.Category;
 
 public interface CategoryService {
 
@@ -24,7 +27,8 @@ public interface CategoryService {
    * @param categoryDto CategoryDto
    * @param id long
    */
-  void update(String correlationId, String logKey, CategoryDto categoryDto, long id);
+  void update(
+      String correlationId, String logKey, CategoryDto categoryDto, long id, String username);
 
   /**
    * Delete Category by ID.
@@ -46,7 +50,7 @@ public interface CategoryService {
   CategoryDto findById(String correlationId, String logKey, long id);
 
   /**
-   * Find All Categories with Pagination and Filters.
+   * Find all categories with pagination and filters.
    *
    * @param correlationId String
    * @param logKey String
@@ -54,8 +58,20 @@ public interface CategoryService {
    * @param size int
    * @param search String
    * @param status Status
-   * @return PageResponse<CategoryDto>
+   * @return PageResponse<CategoryDetails>
    */
-  PageResponse<CategoryDto> findAll(
+  PageResponse<CategoryDetails> findAll(
       String correlationId, String logKey, int page, int size, String search, Status status);
+
+  /**
+   * Find Category by Name.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param name String
+   * @return Category
+   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+   */
+  Category findByName(String correlationId, String logKey, String name)
+      throws GeneralStatusCodeErrorException;
 }

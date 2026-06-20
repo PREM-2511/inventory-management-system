@@ -17,7 +17,7 @@ public interface CategoryRepository {
    * @return long
    * @throws Exception if an error occurs during the operation
    */
-  long save(String correlationId, String logKey, Category category);
+  long save(String correlationId, String logKey, Category category) throws Exception;
 
   /**
    * Update Category.
@@ -28,7 +28,7 @@ public interface CategoryRepository {
    * @return int
    * @throws Exception if an error occurs during the operation
    */
-  int update(String correlationId, String logKey, Category category);
+  int update(String correlationId, String logKey, Category category) throws Exception;
 
   /**
    * Delete Category by ID.
@@ -39,7 +39,7 @@ public interface CategoryRepository {
    * @return int
    * @throws Exception if an error occurs during the operation
    */
-  int delete(String correlationId, String logKey, long id);
+  int delete(String correlationId, String logKey, long id) throws Exception;
 
   /**
    * Find Category by ID.
@@ -50,7 +50,7 @@ public interface CategoryRepository {
    * @return Optional<CategoryDto>
    * @throws Exception if an error occurs during the operation
    */
-  Optional<CategoryDto> findById(String correlationId, String logKey, long id);
+  Optional<CategoryDto> findById(String correlationId, String logKey, long id) throws Exception;
 
   /**
    * Find All Categories with Pagination and Filters.
@@ -65,10 +65,11 @@ public interface CategoryRepository {
    * @throws Exception if an error occurs during the operation
    */
   List<Category> findAll(
-      String correlationId, String logKey, int page, int size, String search, Status status);
+      String correlationId, String logKey, int page, int size, String search, Status status)
+      throws Exception;
 
   /**
-   * Count All Categories.
+   * Count all categories.
    *
    * @param correlationId String
    * @param logKey String
@@ -77,5 +78,16 @@ public interface CategoryRepository {
    * @return long
    * @throws Exception if an error occurs during the operation
    */
-  long countAll(String correlationId, String logKey, String search, Status status);
+  long countAll(String correlationId, String logKey, String search, Status status) throws Exception;
+
+  /**
+   * Find Category by Name.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param name String
+   * @return Optional<Category>
+   * @throws Exception if an error occurs during the operation
+   */
+  Optional<Category> findByName(String correlationId, String logKey, String name) throws Exception;
 }
