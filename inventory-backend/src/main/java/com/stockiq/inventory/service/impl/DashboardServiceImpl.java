@@ -12,6 +12,7 @@ import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.repository.StockTransactionRepository;
 import com.stockiq.inventory.repository.SupplierRepository;
 import com.stockiq.inventory.service.DashboardService;
+import com.stockiq.inventory.service.ProductService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,20 +28,18 @@ public class DashboardServiceImpl implements DashboardService {
   private static final String INIT_LOG = "init_log";
   private static final String EXCEPTION_LOG = "exception_log";
 
-  private final ProductRepository productRepository;
+  private final ProductService productService;
   private final SupplierRepository supplierRepository;
   private final StockTransactionRepository stockTransactionRepository;
-  private final CategoryRepository categoryRepository;
 
   public DashboardServiceImpl(
-      ProductRepository productRepository,
       SupplierRepository supplierRepository,
       StockTransactionRepository stockTransactionRepository,
-      CategoryRepository categoryRepository) {
-    this.productRepository = productRepository;
+      ProductService productService) {
+
     this.supplierRepository = supplierRepository;
     this.stockTransactionRepository = stockTransactionRepository;
-    this.categoryRepository = categoryRepository;
+    this.productService = productService;
   }
 
   /**
@@ -60,7 +59,9 @@ public class DashboardServiceImpl implements DashboardService {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
       // Get total number of products
-      long totalProducts = productRepository.countAll(correlationId, logKey, "", null);
+      List<ProductDto> allProducts = productService.getAllProducts(correlationId, logKey);
+
+      long totalProducts = allProducts.size();
 
       // Get total number of suppliers
       long totalSuppliers = supplierRepository.countAll(correlationId, logKey, "");
@@ -69,7 +70,7 @@ public class DashboardServiceImpl implements DashboardService {
       long totalTransactions = stockTransactionRepository.countAll(correlationId, logKey);
 
       // Get low-stock products
-      List<ProductDto> lowStockList = productRepository.getLowStockAlerts(correlationId, logKey);
+      List<ProductDto> lowStockList = productService.getLowStockAlerts(correlationId, logKey);
 
       long lowStock = lowStockList.size();
 
@@ -106,8 +107,7 @@ public class DashboardServiceImpl implements DashboardService {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
       // Retrieve all products
-      List<ProductDto> allProducts =
-          productRepository.findAll(correlationId, logKey, 0, 10000, "", null);
+      List<ProductDto> allProducts = productService.getAllProducts(correlationId, logKey);
 
       long total = allProducts.size();
 
