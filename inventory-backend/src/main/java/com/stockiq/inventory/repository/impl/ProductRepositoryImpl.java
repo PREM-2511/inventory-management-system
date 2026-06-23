@@ -1,0 +1,268 @@
+package com.stockiq.inventory.repository.impl;
+
+import com.stockiq.inventory.common.util.ActivityLog;
+import com.stockiq.inventory.dto.ProductDto;
+import com.stockiq.inventory.entity.Product;
+import com.stockiq.inventory.repository.ProductRepository;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class ProductRepositoryImpl implements ProductRepository {
+
+  private static final String REPO_IMPL = "product_repo_impl";
+
+  private static final String INIT_LOG = "init_log";
+
+  private static final String SELECT_DTO =
+      """
+      SELECT p.id,
+             p.name,
+             c.name AS category,
+             p.qty,
+             p.reorder_point AS reorder,
+             p.created_by AS createdBy,
+             p.created_at AS createdAt,
+             p.updated_by AS updatedBy,
+             p.updated_at AS updatedAt
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      """;
+
+  private final NamedParameterJdbcTemplate jdbcTemplate;
+
+  public ProductRepositoryImpl(NamedParameterJdbcTemplate jdbcTemplate) {
+    this.jdbcTemplate = jdbcTemplate;
+  }
+
+  /**
+   * Save Product
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param product Product
+   * @return long
+   */
+  @Override
+  public long save(String correlationId, String logKey, Product product) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql =
+        """
+        INSERT INTO products
+        (
+            name,
+            category_id,
+            qty,
+            reorder_point,
+            created_by,
+            created_at
+        )
+        VALUES
+        (
+            :name,
+            :categoryId,
+            :qty,
+            :reorderPoint,
+            :createdBy,
+            :createdAt
+        )
+        """;
+
+    KeyHolder keyHolder = new GeneratedKeyHolder();
+
+    jdbcTemplate.update(
+        sql, new BeanPropertySqlParameterSource(product), keyHolder, new String[] {"id"});
+
+    return keyHolder.getKey() != null ? keyHolder.getKey().longValue() : 0L;
+  }
+
+  /**
+   * Update Product
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param product Product
+   * @return int
+   */
+  @Override
+  public int update(String correlationId, String logKey, Product product) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql =
+        """
+        UPDATE products
+        SET name = :name,
+            category_id = :categoryId,
+            qty = :qty,
+            reorder_point = :reorderPoint,
+            updated_by = :updatedBy,
+            updated_at = :updatedAt
+        WHERE id = :id
+        """;
+
+    return jdbcTemplate.update(sql, new BeanPropertySqlParameterSource(product));
+  }
+
+  /**
+   * Delete Product
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param id long
+   * @return int
+   */
+  @Override
+  public int delete(String correlationId, String logKey, long id) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = "DELETE FROM products WHERE id = :id";
+
+    return jdbcTemplate.update(sql, new MapSqlParameterSource("id", id));
+  }
+
+  /**
+   * Find Product By Id
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param id long
+   * @return Optional<ProductDto>
+   */
+  @Override
+  public Optional<ProductDto> findById(String correlationId, String logKey, long id) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = SELECT_DTO + " WHERE p.id = :id";
+
+    List<ProductDto> list =
+        jdbcTemplate.query(
+            sql,
+            new MapSqlParameterSource("id", id),
+            BeanPropertyRowMapper.newInstance(ProductDto.class));
+
+    return list.stream().findFirst();
+  }
+
+  /**
+   * Find Product By Name
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param name String
+   * @return Optional<Product>
+   */
+  @Override
+  public Optional<Product> findByName(String correlationId, String logKey, String name) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = "SELECT * FROM products WHERE name = :name";
+
+    List<Product> products =
+        jdbcTemplate.query(
+            sql,
+            new MapSqlParameterSource("name", name),
+            BeanPropertyRowMapper.newInstance(Product.class));
+
+    return products.stream().findFirst();
+  }
+
+  /**
+   * Find All Products
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param page int
+   * @param size int
+   * @param search String
+   * @param category String
+   * @return List<ProductDto>
+   */
+  @Override
+  public List<ProductDto> findAll(
+      String correlationId, String logKey, int page, int size, String search, String category) {
+
+    StringBuilder sql = new StringBuilder(SELECT_DTO + " WHERE 1=1 ");
+    MapSqlParameterSource params = new MapSqlParameterSource();
+
+    if (search != null && !search.trim().isEmpty()) {
+      sql.append(" AND p.name LIKE :search ");
+      params.addValue("search", "%" + search.trim() + "%");
+    }
+
+    if (category != null && !category.trim().isEmpty() && !category.equals("All categories")) {
+      sql.append(" AND c.name = :category ");
+      params.addValue("category", category.trim());
+    }
+
+    sql.append(" ORDER BY p.name ASC LIMIT :limit OFFSET :offset ");
+    params.addValue("limit", size);
+    params.addValue("offset", (page - 1) * size);
+
+    return jdbcTemplate.query(
+        sql.toString(), params, BeanPropertyRowMapper.newInstance(ProductDto.class));
+  }
+
+  /**
+   * Count All Products
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param search String
+   * @param category String
+   * @return long
+   */
+  @Override
+  public long countAll(String correlationId, String logKey, String search, String category) {
+
+    StringBuilder sql =
+        new StringBuilder(
+            "SELECT COUNT(*) FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1 ");
+
+    MapSqlParameterSource params = new MapSqlParameterSource();
+
+    if (search != null && !search.trim().isEmpty()) {
+      sql.append(" AND p.name LIKE :search ");
+      params.addValue("search", "%" + search.trim() + "%");
+    }
+
+    if (category != null && !category.trim().isEmpty() && !category.equals("All categories")) {
+      sql.append(" AND c.name = :category ");
+      params.addValue("category", category.trim());
+    }
+
+    Long count = jdbcTemplate.queryForObject(sql.toString(), params, Long.class);
+
+    return count != null ? count : 0L;
+  }
+
+  /**
+   * Get Low Stock Alerts
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @return List<ProductDto>
+   */
+  @Override
+  public List<ProductDto> getLowStockAlerts(String correlationId, String logKey) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = SELECT_DTO + " WHERE p.qty <= p.reorder_point ORDER BY p.qty ASC";
+
+    return jdbcTemplate.query(
+        sql, new MapSqlParameterSource(), BeanPropertyRowMapper.newInstance(ProductDto.class));
+  }
+}
