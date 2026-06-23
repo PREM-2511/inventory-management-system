@@ -46,7 +46,8 @@ public class CategoryServiceImpl implements CategoryService {
    * @return CategoryDto
    */
   @Override
-  public CategoryDto save(String correlationId, String logKey, CategoryDto categoryDto) {
+  public CategoryDto save(String correlationId, String logKey, CategoryDto categoryDto)
+      throws GeneralStatusCodeErrorException {
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
@@ -89,7 +90,8 @@ public class CategoryServiceImpl implements CategoryService {
    */
   @Override
   public void update(
-      String correlationId, String logKey, CategoryDto categoryDto, long id, String username) {
+      String correlationId, String logKey, CategoryDto categoryDto, long id, String username)
+      throws GeneralStatusCodeErrorException {
 
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
@@ -128,7 +130,8 @@ public class CategoryServiceImpl implements CategoryService {
    * @param id long
    */
   @Override
-  public void delete(String correlationId, String logKey, long id) {
+  public void delete(String correlationId, String logKey, long id)
+      throws GeneralStatusCodeErrorException {
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
@@ -157,7 +160,8 @@ public class CategoryServiceImpl implements CategoryService {
    * @return CategoryDto
    */
   @Override
-  public CategoryDto findById(String correlationId, String logKey, long id) {
+  public CategoryDto findById(String correlationId, String logKey, long id)
+      throws GeneralStatusCodeErrorException {
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
@@ -188,7 +192,8 @@ public class CategoryServiceImpl implements CategoryService {
    */
   @Override
   public PageResponse<CategoryDetails> findAll(
-      String correlationId, String logKey, int page, int size, String search, Status status) {
+      String correlationId, String logKey, int page, int size, String search, Status status)
+      throws GeneralStatusCodeErrorException {
 
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);

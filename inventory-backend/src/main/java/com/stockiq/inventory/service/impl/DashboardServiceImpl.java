@@ -124,6 +124,7 @@ public class DashboardServiceImpl implements DashboardService {
       // Convert grouped data into response DTO
       for (Map.Entry<String, Long> entry : grouped.entrySet()) {
 
+        // (category count × 100) / total products
         int percentage = total > 0 ? (int) Math.round((entry.getValue() * 100.0) / total) : 0;
 
         result.add(

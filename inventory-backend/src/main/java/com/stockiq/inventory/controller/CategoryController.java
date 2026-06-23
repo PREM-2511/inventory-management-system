@@ -2,6 +2,7 @@ package com.stockiq.inventory.controller;
 
 import com.stockiq.inventory.common.enums.HttpStatusCodeEnum;
 import com.stockiq.inventory.common.enums.category.Status;
+import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.common.response.category.CategoryDetails;
 import com.stockiq.inventory.common.response.category.CreateCategoryResponse;
 import com.stockiq.inventory.common.response.category.DeleteCategoryResponse;
@@ -44,7 +45,8 @@ public class CategoryController {
   @PostMapping
   public ResponseEntity<CreateCategoryResponse> create(
       @RequestBody @Valid CategoryDto categoryDto,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId) {
+      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
+      throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "CREATE";
 
@@ -78,7 +80,8 @@ public class CategoryController {
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "", required = false) String search,
-      @RequestParam(required = false) Status status) {
+      @RequestParam(required = false) Status status)
+      throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "FIND_ALL";
 
@@ -98,7 +101,8 @@ public class CategoryController {
   @GetMapping("/{id}")
   public ResponseEntity<CategoryDto> getById(
       @PathVariable long id,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId) {
+      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
+      throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "FIND_BY_ID";
 
@@ -121,7 +125,8 @@ public class CategoryController {
       @PathVariable long id,
       @RequestBody @Valid CategoryDto categoryDto,
       @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId,
-      Authentication authentication) {
+      Authentication authentication)
+      throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "UPDATE";
 
@@ -143,7 +148,8 @@ public class CategoryController {
   @DeleteMapping("/{id}")
   public ResponseEntity<DeleteCategoryResponse> delete(
       @PathVariable long id,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId) {
+      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
+      throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "DELETE";
 
