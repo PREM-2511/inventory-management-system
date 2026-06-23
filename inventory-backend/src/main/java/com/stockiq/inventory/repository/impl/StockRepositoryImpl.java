@@ -3,7 +3,7 @@ package com.stockiq.inventory.repository.impl;
 import com.stockiq.inventory.common.enums.stock.MovementType;
 import com.stockiq.inventory.common.util.ActivityLog;
 import com.stockiq.inventory.dto.StockDto;
-import com.stockiq.inventory.entity.StockTransaction;
+import com.stockiq.inventory.entity.Stock;
 import com.stockiq.inventory.repository.StockRepository;
 import java.util.List;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
@@ -35,7 +35,7 @@ public class StockRepositoryImpl implements StockRepository {
    * @return long
    */
   @Override
-  public long save(String correlationId, String logKey, StockTransaction transaction) {
+  public long save(String correlationId, String logKey, Stock transaction) {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 

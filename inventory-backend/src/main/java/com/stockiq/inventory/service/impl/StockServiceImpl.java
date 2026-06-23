@@ -11,7 +11,7 @@ import com.stockiq.inventory.common.util.SystemFormats;
 import com.stockiq.inventory.dto.ProductDto;
 import com.stockiq.inventory.dto.StockDto;
 import com.stockiq.inventory.entity.Product;
-import com.stockiq.inventory.entity.StockTransaction;
+import com.stockiq.inventory.entity.Stock;
 import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.repository.StockRepository;
 import com.stockiq.inventory.service.StockService;
@@ -104,8 +104,8 @@ public class StockServiceImpl implements StockService {
 
       productRepository.update(correlationId, logKey, product);
 
-      StockTransaction transaction =
-          StockTransaction.builder()
+      Stock transaction =
+          Stock.builder()
               .type(movementDto.getType().getValue())
               .productId(product.getId())
               .qty(movementDto.getQty())
