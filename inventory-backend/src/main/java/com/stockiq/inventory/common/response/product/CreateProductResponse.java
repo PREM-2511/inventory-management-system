@@ -10,7 +10,7 @@ public class CreateProductResponse {
   private long id;
   private String name;
   private String category;
-  private Integer qty;  //Quantity
+  private Integer qty; // Quantity
   private Integer reorder;
   private ProductStatus status;
   private String createdAt;

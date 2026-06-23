@@ -173,8 +173,6 @@ public class ProductController {
 
     ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
 
-    return ResponseEntity.ok(
-        productService.getLowStockAlerts(correlationId, logKey));
+    return ResponseEntity.ok(productService.getLowStockAlerts(correlationId, logKey));
   }
-
 }

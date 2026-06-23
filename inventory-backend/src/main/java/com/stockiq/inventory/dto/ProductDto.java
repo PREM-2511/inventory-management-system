@@ -1,6 +1,7 @@
 package com.stockiq.inventory.dto;
 
 import com.stockiq.inventory.common.enums.product.ProductStatus;
+import com.stockiq.inventory.common.enums.stock.StockLevel;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +29,7 @@ public class ProductDto {
   private Integer reorder;
 
   private ProductStatus status;
+  private StockLevel stockLevel;
 
   private String createdAt;
   private String createdBy;
