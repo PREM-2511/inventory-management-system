@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StockTransaction {
+public class Stock {
   private long id;
   private int type; // 'IN' or 'OUT'
   private long productId;

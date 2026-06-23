@@ -1,7 +1,7 @@
 package com.stockiq.inventory.repository;
 
 import com.stockiq.inventory.dto.StockDto;
-import com.stockiq.inventory.entity.StockTransaction;
+import com.stockiq.inventory.entity.Stock;
 import java.util.List;
 
 public interface StockRepository {
@@ -15,7 +15,7 @@ public interface StockRepository {
    * @return long
    * @throws Exception if an error occurs during the operation
    */
-  long save(String correlationId, String logKey, StockTransaction transaction) throws Exception;
+  long save(String correlationId, String logKey, Stock transaction) throws Exception;
 
   /**
    * Get all stock movement history.
