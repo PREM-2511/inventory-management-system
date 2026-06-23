@@ -7,9 +7,7 @@ import com.stockiq.inventory.common.util.ErrorMessage;
 import com.stockiq.inventory.dto.DashboardCategoryDto;
 import com.stockiq.inventory.dto.DashboardSummaryDto;
 import com.stockiq.inventory.dto.ProductDto;
-import com.stockiq.inventory.repository.CategoryRepository;
-import com.stockiq.inventory.repository.ProductRepository;
-import com.stockiq.inventory.repository.StockTransactionRepository;
+import com.stockiq.inventory.repository.StockRepository;
 import com.stockiq.inventory.repository.SupplierRepository;
 import com.stockiq.inventory.service.DashboardService;
 import com.stockiq.inventory.service.ProductService;
@@ -30,11 +28,11 @@ public class DashboardServiceImpl implements DashboardService {
 
   private final ProductService productService;
   private final SupplierRepository supplierRepository;
-  private final StockTransactionRepository stockTransactionRepository;
+  private final StockRepository stockTransactionRepository;
 
   public DashboardServiceImpl(
       SupplierRepository supplierRepository,
-      StockTransactionRepository stockTransactionRepository,
+      StockRepository stockTransactionRepository,
       ProductService productService) {
 
     this.supplierRepository = supplierRepository;

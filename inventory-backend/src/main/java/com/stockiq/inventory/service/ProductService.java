@@ -42,7 +42,7 @@ public interface ProductService {
   void delete(String correlationId, String logKey, long id) throws GeneralStatusCodeErrorException;
 
   /**
-   * Find Product By Id
+   * Find Product By id
    *
    * @param correlationId String
    * @param logKey String
