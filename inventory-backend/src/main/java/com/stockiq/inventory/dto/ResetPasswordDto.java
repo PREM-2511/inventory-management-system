@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ResetPasswordDto {
-
+//reset password dto
   @Email(message = "Invalid email")
   @NotBlank(message = "Email is required")
   private String email;
