@@ -9,6 +9,7 @@ import lombok.*;
 @Builder
 public class Product {
   private long id;
+  private Long userId;
   private String name;
   private Long categoryId;
   private int qty;
