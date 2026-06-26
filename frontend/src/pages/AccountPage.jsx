@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
 
 function AccountPage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   
   const [fullName, setFullName] = useState(user?.fullName || 'Admin User');
   const [companyName, setCompanyName] = useState(user?.companyName || 'StockIQ Solutions');
@@ -12,6 +12,17 @@ function AccountPage() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.fullName || '');
+      setCompanyName(user.companyName || '');
+      setEmail(user.email || '');
+      setRole(user.role || 'System Administrator');
+    }
+  }, [user]);
 
   const getInitials = (name) => {
     if (!name) return 'SU';
@@ -22,11 +33,20 @@ function AccountPage() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setIsEditing(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setError('');
+    setLoading(true);
+    try {
+      await updateProfile(fullName, companyName, email);
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update profile details');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,6 +58,14 @@ function AccountPage() {
           <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs flex items-center gap-3 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
             <span className="text-base font-bold">✓</span>
             <span className="font-semibold">Profile details successfully updated!</span>
+          </div>
+        )}
+
+        {/* Error Alert */}
+        {error && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs flex items-center gap-3 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+            <span className="text-base font-bold">⚠️</span>
+            <span className="font-semibold">{error}</span>
           </div>
         )}
 
@@ -88,16 +116,18 @@ function AccountPage() {
                   <div className="flex gap-2">
                     <button
                       type="button"
+                      disabled={loading}
                       onClick={() => setIsEditing(false)}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[10px] font-bold cursor-pointer"
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[10px] font-bold cursor-pointer disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-400/20 text-[10px] font-bold shadow-md cursor-pointer"
+                      disabled={loading}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-400/20 text-[10px] font-bold shadow-md cursor-pointer disabled:opacity-50"
                     >
-                      Save
+                      {loading ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 )}
@@ -109,7 +139,7 @@ function AccountPage() {
                   <input
                     type="text"
                     required
-                    disabled={!isEditing}
+                    disabled={!isEditing || loading}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs disabled:opacity-60"
@@ -121,7 +151,7 @@ function AccountPage() {
                   <input
                     type="text"
                     required
-                    disabled={!isEditing}
+                    disabled={!isEditing || loading}
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs disabled:opacity-60"
@@ -133,7 +163,7 @@ function AccountPage() {
                   <input
                     type="email"
                     required
-                    disabled={!isEditing}
+                    disabled={!isEditing || loading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs disabled:opacity-60 font-mono"

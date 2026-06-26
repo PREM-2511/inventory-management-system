@@ -7,6 +7,8 @@ const ForgotPasswordPage = () => {
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -16,23 +18,10 @@ const ForgotPasswordPage = () => {
     setError("");
     setLoading(true);
     try {
-      await resetPassword(email);
+      await resetPassword(email, newPassword);
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || "Failed to send reset link. Please check your email.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      await resetPassword(email);
-      alert("Reset link resent to " + email);
-    } catch (err) {
-      setError(err.message || "Failed to resend reset link.");
+      setError(err.message || "Failed to reset password. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -66,9 +55,9 @@ const ForgotPasswordPage = () => {
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold mb-2">Reset password</h1>
+            <h1 className="text-3xl font-bold mb-2">Reset Password</h1>
             <p className="text-gray-400 text-sm">
-              We'll send you an email with instructions to set a new password
+              Enter your email and chosen password to update your login credentials
             </p>
           </div>
 
@@ -97,12 +86,45 @@ const ForgotPasswordPage = () => {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      disabled={loading}
+                      className="w-full pl-4 pr-10 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors text-sm disabled:opacity-50 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                    >
+                      {showPassword ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/35 transition-all text-sm flex items-center justify-center cursor-pointer"
                 >
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  {loading ? "Resetting..." : "Reset Password"}
                 </button>
 
                 <div className="text-center pt-2">
@@ -118,35 +140,24 @@ const ForgotPasswordPage = () => {
               <div className="text-center space-y-6 py-2">
                 {/* Glowing Success Envelope Icon */}
                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-3xl mx-auto shadow-[0_0_20px_rgba(16,185,129,0.1)] text-emerald-400">
-                  ✉️
+                  ✓
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white">Check your email</h3>
+                  <h3 className="text-xl font-bold text-white">Password Updated</h3>
                   <p className="text-gray-400 text-sm leading-relaxed">
-                    We have sent a secure password reset link to: <br />
+                    Your password has been successfully reset for: <br />
                     <span className="text-blue-400 font-medium break-all">{email}</span>
                   </p>
                 </div>
 
                 <div className="pt-2 space-y-4">
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={loading}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors rounded-xl text-xs font-bold cursor-pointer"
+                  <Link
+                    to="/login"
+                    className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/35 transition-all text-sm flex items-center justify-center cursor-pointer"
                   >
-                    {loading ? "Resending..." : "Resend Email"}
-                  </button>
-
-                  <div>
-                    <Link
-                      to="/login"
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
-                    >
-                      <span>&larr;</span> Back to Sign In
-                    </Link>
-                  </div>
+                    Sign In
+                  </Link>
                 </div>
               </div>
             )}

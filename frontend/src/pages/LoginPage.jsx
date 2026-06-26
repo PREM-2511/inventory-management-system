@@ -2,40 +2,58 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import { useAuth } from "../context/AuthContext";
+import { useGoogleLogin } from "@react-oauth/google";
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, loginWithOAuth } = useAuth();
+  const { login, loginWithGoogle, loginWithGithub } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.message || "Invalid email or password. Please try again.");
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Invalid email or password. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOAuthLogin = async (provider) => {
-    setError("");
-    setLoading(true);
-    try {
-      await loginWithOAuth(provider);
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.message || `Failed to authenticate with ${provider}`);
-    } finally {
-      setLoading(false);
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setError("");
+      setLoading(true);
+      try {
+        await loginWithGoogle(tokenResponse.access_token);
+        navigate("/dashboard");
+      } catch (err) {
+        setError(err.message || "Google login failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setError("Google Login failed or was cancelled.");
     }
+  });
+
+  const handleGithubLogin = () => {
+    setError("");
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || "your-github-client-id";
+    const redirectUri = `${window.location.origin}/oauth/github/callback`;
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
   };
 
   return (
@@ -92,15 +110,33 @@ function LoginPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  disabled={loading}
-                  className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors disabled:opacity-50"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    disabled={loading}
+                    className="w-full pl-4 pr-10 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -136,7 +172,7 @@ function LoginPage() {
             <div className="grid grid-cols-2 gap-3.5">
               <button
                 type="button"
-                onClick={() => handleOAuthLogin("Google")}
+                onClick={() => handleGoogleLogin()}
                 disabled={loading}
                 className="flex items-center justify-center gap-2.5 px-4 py-2.5 border border-gray-800 bg-[#080d1a]/80 hover:bg-slate-900/60 hover:border-slate-700/80 transition-all rounded-xl text-xs font-semibold cursor-pointer text-slate-200 disabled:opacity-50"
               >
@@ -164,7 +200,7 @@ function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => handleOAuthLogin("GitHub")}
+                onClick={handleGithubLogin}
                 disabled={loading}
                 className="flex items-center justify-center gap-2.5 px-4 py-2.5 border border-gray-800 bg-[#080d1a]/80 hover:bg-slate-900/60 hover:border-slate-700/80 transition-all rounded-xl text-xs font-semibold cursor-pointer text-slate-200 disabled:opacity-50"
               >
@@ -188,7 +224,7 @@ function LoginPage() {
 
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-blue-950/20 border border-blue-900/30 rounded-xl text-center text-xs text-gray-400">
-            <p className="font-mono">Demo: admin@company.com / password</p>
+            <p className="font-mono">Register a new account to get started</p>
           </div>
         </div>
       </div>
