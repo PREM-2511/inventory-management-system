@@ -9,23 +9,34 @@ const MainLayout = ({ children, title }) => {
   const { user } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [backendReachable, setBackendReachable] = useState(true);
 
   const fetchUnreadCount = async () => {
+    if (!user) return;
     try {
-      if (user) {
-        const response = await notificationAPI.getUnreadCount();
-        setUnreadCount(response.data);
-      }
+      const response = await notificationAPI.getUnreadCount();
+      setUnreadCount(response.data || 0);
+      if (!backendReachable) setBackendReachable(true);
     } catch (err) {
-      console.error('Failed to fetch unread count:', err);
+      // Silently ignore connection errors (backend not started yet)
+      const isConnRefused =
+        err?.message?.includes('ECONNREFUSED') ||
+        err?.message?.includes('Network Error') ||
+        err?.message?.includes('ERR_CONNECTION_REFUSED');
+      if (isConnRefused) {
+        if (backendReachable) setBackendReachable(false);
+      }
+      // Do not log — avoids console spam when backend is down
     }
   };
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    // Poll every 30s when backend is reachable, slow down to 60s when it's not
+    const pollInterval = backendReachable ? 30000 : 60000;
+    const interval = setInterval(fetchUnreadCount, pollInterval);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, backendReachable]);
   
   // Theme State (loads and saves to localStorage)
   const [theme, setTheme] = useState(() => {
