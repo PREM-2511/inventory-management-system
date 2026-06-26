@@ -31,7 +31,6 @@ import java.net.http.HttpResponse;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
@@ -94,11 +93,17 @@ public class AuthServiceImpl implements AuthService {
               .email(userDto.getEmail())
               .password(passwordEncoder.encode(userDto.getPassword()))
               .roleId(role.getValue())
-              .createdBy(userDto.getEmail())
               .createdAt(Timestamp.valueOf(LocalDateTime.now()))
               .build();
 
       long id = userRepository.save(correlationId, logKey, user);
+
+      // Set user_id and created_by to the user's own numeric ID after insert
+      user.setId(id);
+      user.setUserId(id);
+      user.setCreatedBy(String.valueOf(id));
+      user.setUpdatedAt(null);
+      userRepository.update(correlationId, logKey, user);
 
       return CreateUserResponse.builder()
           .id(id)
@@ -189,7 +194,7 @@ public class AuthServiceImpl implements AuthService {
 
       UserRole role = UserRole.fromValue(user.getRoleId());
 
-      String token = jwtUtil.generateToken(user.getEmail(), role.name());
+      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
 
       return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
 
@@ -322,7 +327,7 @@ public class AuthServiceImpl implements AuthService {
       UserRole role = UserRole.fromValue(user.getRoleId());
 
       return ProfileUpdateResponse.builder()
-          .token(jwtUtil.generateToken(user.getEmail(), role.name()))
+          .token(jwtUtil.generateToken(user.getEmail(), role.name(), user.getId()))
           .user(
               CreateUserResponse.builder()
                   .id(user.getId())
@@ -491,7 +496,7 @@ public class AuthServiceImpl implements AuthService {
       // Generate JWT token
       UserRole role = UserRole.fromValue(user.getRoleId());
 
-      String token = jwtUtil.generateToken(user.getEmail(), role.name());
+      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
 
       return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
 
@@ -608,7 +613,7 @@ public class AuthServiceImpl implements AuthService {
 
       UserRole role = UserRole.fromValue(user.getRoleId());
 
-      String token = jwtUtil.generateToken(user.getEmail(), role.name());
+      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
 
       return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
 
@@ -649,16 +654,19 @@ public class AuthServiceImpl implements AuthService {
                         .email(email)
                         .password(null)
                         .roleId(UserRole.USER.getValue())
-                        .createdBy("OAuth")
                         .createdAt(Timestamp.valueOf(LocalDateTime.now()))
                         .build();
                 long id = 0;
                 try {
                   id = userRepository.save(correlationId, logKey, newUser);
+                  // Set user_id and created_by to the user's own numeric ID after insert
+                  newUser.setId(id);
+                  newUser.setUserId(id);
+                  newUser.setCreatedBy(String.valueOf(id));
+                  userRepository.update(correlationId, logKey, newUser);
                 } catch (Exception e) {
                   throw new RuntimeException(e);
                 }
-                newUser.setId(id);
                 return newUser;
               });
     } catch (Exception e) {

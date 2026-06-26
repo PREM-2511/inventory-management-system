@@ -9,6 +9,7 @@ import lombok.*;
 @Builder
 public class User {
   private long id;
+  private Long userId;
   private String fullName;
   private String companyName;
   private String email;

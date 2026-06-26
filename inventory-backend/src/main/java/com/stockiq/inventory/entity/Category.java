@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 @Builder
 public class Category {
   private long id;
+  private Long userId;
   private String name;
   private String icon;
   private int status;

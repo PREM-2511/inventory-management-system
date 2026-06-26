@@ -14,7 +14,6 @@ import com.stockiq.inventory.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -124,15 +123,14 @@ public class CategoryController {
   public ResponseEntity<UpdateCategoryResponse> update(
       @PathVariable long id,
       @RequestBody @Valid CategoryDto categoryDto,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId,
-      Authentication authentication)
+      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
       throws GeneralStatusCodeErrorException {
 
     String logKey = MAIN_LOG_KEY + "UPDATE";
 
-    String username = authentication.getName();
+    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
 
-    categoryService.update(correlationId, logKey, categoryDto, id, username);
+    categoryService.update(correlationId, logKey, categoryDto, id);
 
     return ResponseEntity.ok(
         UpdateCategoryResponse.builder().message("Category updated successfully").build());

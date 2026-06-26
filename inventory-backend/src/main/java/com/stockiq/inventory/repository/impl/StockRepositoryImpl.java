@@ -38,6 +38,7 @@ public class StockRepositoryImpl implements StockRepository {
   public long save(String correlationId, String logKey, Stock transaction) {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+    transaction.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     String sql =
         """
@@ -47,7 +48,8 @@ public class StockRepositoryImpl implements StockRepository {
             product_id,
             qty,
             created_by,
-            created_at
+            created_at,
+            user_id
         )
         VALUES
         (
@@ -55,7 +57,8 @@ public class StockRepositoryImpl implements StockRepository {
             :productId,
             :qty,
             :createdBy,
-            :createdAt
+            :createdAt,
+            :userId
         )
         """;
 
@@ -87,16 +90,20 @@ public class StockRepositoryImpl implements StockRepository {
             p.name AS product,
             t.qty,
             t.created_at AS date,
-            t.created_by AS user
+            COALESCE(u.email, t.created_by) AS user
         FROM stock_transactions t
         LEFT JOIN products p
             ON p.id = t.product_id
+        LEFT JOIN users u
+            ON t.user_id = u.id
+        WHERE t.user_id = :userId
         ORDER BY t.created_at DESC
         """;
 
     return jdbcTemplate.query(
         sql,
-        new MapSqlParameterSource(),
+        new MapSqlParameterSource(
+            "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
         (rs, rowNum) ->
             StockDto.builder()
                 .id(rs.getLong("id"))
@@ -124,9 +131,15 @@ public class StockRepositoryImpl implements StockRepository {
         """
         SELECT COUNT(*)
         FROM stock_transactions
+        WHERE user_id = :userId
         """;
 
-    Long count = jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Long.class);
+    Long count =
+        jdbcTemplate.queryForObject(
+            sql,
+            new MapSqlParameterSource(
+                "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
+            Long.class);
 
     return count != null ? count : 0L;
   }

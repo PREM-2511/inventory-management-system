@@ -30,8 +30,7 @@ public interface CategoryService {
    * @param id long
    * @throws GeneralStatusCodeErrorException if an error occurs during the operation
    */
-  void update(
-      String correlationId, String logKey, CategoryDto categoryDto, long id, String username)
+  void update(String correlationId, String logKey, CategoryDto categoryDto, long id)
       throws GeneralStatusCodeErrorException;
 
   /**

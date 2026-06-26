@@ -4,7 +4,6 @@ import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.common.response.supplier.SupplierDetails;
 import com.stockiq.inventory.common.util.PageResponse;
 import com.stockiq.inventory.dto.SupplierDto;
-import java.util.List;
 
 public interface SupplierService {
 

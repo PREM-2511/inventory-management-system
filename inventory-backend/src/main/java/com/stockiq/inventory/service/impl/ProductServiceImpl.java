@@ -69,7 +69,7 @@ public class ProductServiceImpl implements ProductService {
                   productDto.getStatus() != null
                       ? productDto.getStatus().getValue()
                       : ProductStatus.IN_STOCK.getValue())
-              .createdBy(productDto.getCreatedBy())
+              .createdBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId())
               .createdAt(Timestamp.valueOf(LocalDateTime.now()))
               .build();
 
@@ -142,7 +142,7 @@ public class ProductServiceImpl implements ProductService {
                   productDto.getStatus() != null
                       ? productDto.getStatus().getValue()
                       : ProductStatus.IN_STOCK.getValue())
-              .updatedBy(productDto.getUpdatedBy())
+              .updatedBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId())
               .updatedAt(Timestamp.valueOf(LocalDateTime.now()))
               .build();
 

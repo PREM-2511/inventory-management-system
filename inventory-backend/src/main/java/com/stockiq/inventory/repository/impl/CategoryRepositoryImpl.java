@@ -46,6 +46,7 @@ public class CategoryRepositoryImpl implements CategoryRepository {
   public long save(String correlationId, String logKey, Category category) {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+    category.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     String sql =
         """
@@ -55,7 +56,8 @@ public class CategoryRepositoryImpl implements CategoryRepository {
             icon,
             status,
             created_by,
-            created_at
+            created_at,
+            user_id
         )
         VALUES
         (
@@ -63,7 +65,8 @@ public class CategoryRepositoryImpl implements CategoryRepository {
             :icon,
             :status,
             :createdBy,
-            :createdAt
+            :createdAt,
+            :userId
         )
         """;
 
@@ -96,8 +99,9 @@ public class CategoryRepositoryImpl implements CategoryRepository {
             status = :status,
             updated_by = :updatedBy,
             updated_at = :updatedAt
-        WHERE id = :id
+        WHERE id = :id AND user_id = :userId
         """;
+    category.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     MapSqlParameterSource params =
         new MapSqlParameterSource()
@@ -105,8 +109,10 @@ public class CategoryRepositoryImpl implements CategoryRepository {
             .addValue("name", category.getName())
             .addValue("icon", category.getIcon())
             .addValue("status", category.getStatus())
+            .addValue("createdBy", category.getCreatedBy())
             .addValue("updatedBy", category.getUpdatedBy())
-            .addValue("updatedAt", category.getUpdatedAt());
+            .addValue("updatedAt", category.getUpdatedAt())
+            .addValue("userId", category.getUserId());
 
     return jdbcTemplate.update(sql, params);
   }
@@ -122,9 +128,15 @@ public class CategoryRepositoryImpl implements CategoryRepository {
    */
   @Override
   public int delete(String correlationId, String logKey, long id) {
-    String sql = "DELETE FROM categories WHERE id = :id";
+    String sql = "DELETE FROM categories WHERE id = :id AND user_id = :userId";
 
-    return jdbcTemplate.update(sql, new MapSqlParameterSource("id", id));
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("id", id)
+            .addValue(
+                "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
+
+    return jdbcTemplate.update(sql, params);
   }
 
   /**
@@ -138,12 +150,15 @@ public class CategoryRepositoryImpl implements CategoryRepository {
    */
   @Override
   public Optional<CategoryDto> findById(String correlationId, String logKey, long id) {
-    String sql = SELECT_ALL + " WHERE id = :id";
+    String sql = SELECT_ALL + " WHERE id = :id AND user_id = :userId";
 
     List<Category> categories =
         jdbcTemplate.query(
             sql,
-            new MapSqlParameterSource("id", id),
+            new MapSqlParameterSource("id", id)
+                .addValue(
+                    "userId",
+                    com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
             BeanPropertyRowMapper.newInstance(Category.class));
 
     return categories.stream().findFirst().map(this::toDto);
@@ -164,8 +179,10 @@ public class CategoryRepositoryImpl implements CategoryRepository {
   @Override
   public List<Category> findAll(
       String correlationId, String logKey, int page, int size, String search, Status status) {
-    StringBuilder sql = new StringBuilder(SELECT_ALL + " WHERE 1=1 ");
+    StringBuilder sql = new StringBuilder(SELECT_ALL + " WHERE user_id = :userId ");
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND name LIKE :search ");
@@ -180,7 +197,7 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     sql.append(" ORDER BY name ASC LIMIT :limit OFFSET :offset ");
 
     params.addValue("limit", size);
-    params.addValue("offset", (page - 1) * size);
+    params.addValue("offset", Math.max(0, (page - 1) * size));
 
     return jdbcTemplate.query(
         sql.toString(), params, BeanPropertyRowMapper.newInstance(Category.class));
@@ -198,8 +215,11 @@ public class CategoryRepositoryImpl implements CategoryRepository {
    */
   @Override
   public long countAll(String correlationId, String logKey, String search, Status status) {
-    StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM categories WHERE 1=1 ");
+    StringBuilder sql =
+        new StringBuilder("SELECT COUNT(id) FROM categories WHERE user_id = :userId ");
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND name LIKE :search ");
@@ -230,12 +250,15 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = SELECT_ALL + " WHERE name = :name";
+    String sql = SELECT_ALL + " WHERE name = :name AND user_id = :userId";
 
     List<Category> categories =
         jdbcTemplate.query(
             sql,
-            new MapSqlParameterSource("name", name),
+            new MapSqlParameterSource("name", name)
+                .addValue(
+                    "userId",
+                    com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
             BeanPropertyRowMapper.newInstance(Category.class));
 
     return categories.stream().findFirst();

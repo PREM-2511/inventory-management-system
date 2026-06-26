@@ -24,6 +24,7 @@ public class ProductRepositoryImpl implements ProductRepository {
   private static final String SELECT_DTO =
       """
       SELECT p.id,
+             p.user_id AS userId,
              p.name,
              c.name AS category,
              p.qty,
@@ -54,6 +55,7 @@ public class ProductRepositoryImpl implements ProductRepository {
   public long save(String correlationId, String logKey, Product product) {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+    product.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     String sql =
         """
@@ -64,7 +66,8 @@ public class ProductRepositoryImpl implements ProductRepository {
             qty,
             reorder_point,
             created_by,
-            created_at
+            created_at,
+            user_id
         )
         VALUES
         (
@@ -73,7 +76,8 @@ public class ProductRepositoryImpl implements ProductRepository {
             :qty,
             :reorderPoint,
             :createdBy,
-            :createdAt
+            :createdAt,
+            :userId
         )
         """;
 
@@ -107,8 +111,9 @@ public class ProductRepositoryImpl implements ProductRepository {
             reorder_point = :reorderPoint,
             updated_by = :updatedBy,
             updated_at = :updatedAt
-        WHERE id = :id
+        WHERE id = :id AND user_id = :userId
         """;
+    product.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     return jdbcTemplate.update(sql, new BeanPropertySqlParameterSource(product));
   }
@@ -126,9 +131,15 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = "DELETE FROM products WHERE id = :id";
+    String sql = "DELETE FROM products WHERE id = :id AND user_id = :userId";
 
-    return jdbcTemplate.update(sql, new MapSqlParameterSource("id", id));
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("id", id)
+            .addValue(
+                "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
+
+    return jdbcTemplate.update(sql, params);
   }
 
   /**
@@ -144,12 +155,15 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = SELECT_DTO + " WHERE p.id = :id";
+    String sql = SELECT_DTO + " WHERE p.id = :id AND p.user_id = :userId";
 
     List<ProductDto> list =
         jdbcTemplate.query(
             sql,
-            new MapSqlParameterSource("id", id),
+            new MapSqlParameterSource("id", id)
+                .addValue(
+                    "userId",
+                    com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
             BeanPropertyRowMapper.newInstance(ProductDto.class));
 
     return list.stream().findFirst();
@@ -168,12 +182,15 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = "SELECT * FROM products WHERE name = :name";
+    String sql = "SELECT * FROM products WHERE name = :name AND user_id = :userId";
 
     List<Product> products =
         jdbcTemplate.query(
             sql,
-            new MapSqlParameterSource("name", name),
+            new MapSqlParameterSource("name", name)
+                .addValue(
+                    "userId",
+                    com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
             BeanPropertyRowMapper.newInstance(Product.class));
 
     return products.stream().findFirst();
@@ -194,8 +211,10 @@ public class ProductRepositoryImpl implements ProductRepository {
   public List<ProductDto> findAll(
       String correlationId, String logKey, int page, int size, String search, String category) {
 
-    StringBuilder sql = new StringBuilder(SELECT_DTO + " WHERE 1=1 ");
+    StringBuilder sql = new StringBuilder(SELECT_DTO + " WHERE p.user_id = :userId ");
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND p.name LIKE :search ");
@@ -209,7 +228,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     sql.append(" ORDER BY p.name ASC LIMIT :limit OFFSET :offset ");
     params.addValue("limit", size);
-    params.addValue("offset", (page - 1) * size);
+    params.addValue("offset", Math.max(0, (page - 1) * size));
 
     return jdbcTemplate.query(
         sql.toString(), params, BeanPropertyRowMapper.newInstance(ProductDto.class));
@@ -229,9 +248,11 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     StringBuilder sql =
         new StringBuilder(
-            "SELECT COUNT(*) FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1 ");
+            "SELECT COUNT(*) FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.user_id = :userId ");
 
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND p.name LIKE :search ");
@@ -260,9 +281,13 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = SELECT_DTO + " WHERE p.qty <= p.reorder_point ORDER BY p.qty ASC";
+    String sql =
+        SELECT_DTO + " WHERE p.qty <= p.reorder_point AND p.user_id = :userId ORDER BY p.qty ASC";
 
     return jdbcTemplate.query(
-        sql, new MapSqlParameterSource(), BeanPropertyRowMapper.newInstance(ProductDto.class));
+        sql,
+        new MapSqlParameterSource(
+            "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
+        BeanPropertyRowMapper.newInstance(ProductDto.class));
   }
 }

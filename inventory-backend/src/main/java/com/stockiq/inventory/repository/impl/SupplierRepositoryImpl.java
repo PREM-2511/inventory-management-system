@@ -40,6 +40,7 @@ public class SupplierRepositoryImpl implements SupplierRepository {
   public long save(String correlationId, String logKey, Supplier supplier) {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+    supplier.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     String sql =
         """
@@ -51,7 +52,8 @@ public class SupplierRepositoryImpl implements SupplierRepository {
             email,
             phone,
             created_by,
-            created_at
+            created_at,
+            user_id
         )
         VALUES
         (
@@ -61,7 +63,8 @@ public class SupplierRepositoryImpl implements SupplierRepository {
             :email,
             :phone,
             :createdBy,
-            :createdAt
+            :createdAt,
+            :userId
         )
         """;
 
@@ -96,8 +99,9 @@ public class SupplierRepositoryImpl implements SupplierRepository {
             phone = :phone,
             updated_by = :updatedBy,
             updated_at = :updatedAt
-        WHERE id = :id
+        WHERE id = :id AND user_id = :userId
         """;
+    supplier.setUserId(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     return jdbcTemplate.update(sql, new BeanPropertySqlParameterSource(supplier));
   }
@@ -115,9 +119,15 @@ public class SupplierRepositoryImpl implements SupplierRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = "DELETE FROM suppliers WHERE id = :id";
+    String sql = "DELETE FROM suppliers WHERE id = :id AND user_id = :userId";
 
-    return jdbcTemplate.update(sql, new MapSqlParameterSource("id", id));
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("id", id)
+            .addValue(
+                "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
+
+    return jdbcTemplate.update(sql, params);
   }
 
   /**
@@ -133,12 +143,15 @@ public class SupplierRepositoryImpl implements SupplierRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    String sql = SELECT_ALL + " WHERE id = :id";
+    String sql = SELECT_ALL + " WHERE id = :id AND user_id = :userId";
 
     List<Supplier> suppliers =
         jdbcTemplate.query(
             sql,
-            new MapSqlParameterSource("id", id),
+            new MapSqlParameterSource("id", id)
+                .addValue(
+                    "userId",
+                    com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
             BeanPropertyRowMapper.newInstance(Supplier.class));
 
     return suppliers.stream().findFirst();
@@ -160,8 +173,10 @@ public class SupplierRepositoryImpl implements SupplierRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    StringBuilder sql = new StringBuilder(SELECT_ALL + " WHERE 1=1 ");
+    StringBuilder sql = new StringBuilder(SELECT_ALL + " WHERE user_id = :userId ");
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND (name LIKE :search OR category LIKE :search) ");
@@ -170,7 +185,7 @@ public class SupplierRepositoryImpl implements SupplierRepository {
 
     sql.append(" ORDER BY name ASC LIMIT :limit OFFSET :offset ");
     params.addValue("limit", size);
-    params.addValue("offset", (page - 1) * size);
+    params.addValue("offset", Math.max(0, (page - 1) * size));
 
     return jdbcTemplate.query(
         sql.toString(), params, BeanPropertyRowMapper.newInstance(Supplier.class));
@@ -189,8 +204,11 @@ public class SupplierRepositoryImpl implements SupplierRepository {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 
-    StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM suppliers WHERE 1=1 ");
+    StringBuilder sql =
+        new StringBuilder("SELECT COUNT(*) FROM suppliers WHERE user_id = :userId ");
     MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(
+        "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong());
 
     if (search != null && !search.trim().isEmpty()) {
       sql.append(" AND (name LIKE :search OR category LIKE :search) ");

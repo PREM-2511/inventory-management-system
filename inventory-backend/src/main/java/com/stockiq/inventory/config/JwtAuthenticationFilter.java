@@ -22,9 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      FilterChain filterChain)
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
     String authHeader = request.getHeader("Authorization");
@@ -35,10 +33,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       if (jwtUtil.validateToken(token)) {
         String email = jwtUtil.extractEmail(token);
         String role = jwtUtil.extractRole(token);
+        Long userId = jwtUtil.extractUserId(token);
+
+        com.stockiq.inventory.common.util.CustomUserPrincipal principal =
+            new com.stockiq.inventory.common.util.CustomUserPrincipal(
+                email, userId != null ? userId : 0L);
 
         UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(
-                email,
+                principal,
                 null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
 

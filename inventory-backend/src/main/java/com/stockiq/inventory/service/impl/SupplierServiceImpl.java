@@ -59,7 +59,7 @@ public class SupplierServiceImpl implements SupplierService {
       long id = supplierRepository.save(correlationId, logKey, supplier);
 
       supplierDto.setId(id);
-      supplierDto.setStatus(SupplierStatus.fromValue(supplier.getStatus()));
+      supplierDto.setStatus(SupplierStatus.fromString(supplier.getStatus()));
       supplierDto.setCreatedAt(supplier.getCreatedAt().toString());
 
       return supplierDto;
@@ -328,11 +328,11 @@ public class SupplierServiceImpl implements SupplierService {
         .name(dto.getName())
         .category(dto.getCategory())
         .status(
-            dto.getStatus() != null ? dto.getStatus().getValue() : SupplierStatus.ACTIVE.getValue())
+            dto.getStatus() != null ? dto.getStatus().toValue() : SupplierStatus.ACTIVE.toValue())
         .email(dto.getEmail())
         .phone(dto.getPhone())
-        .createdBy(dto.getCreatedBy())
-        .updatedBy(dto.getUpdatedBy())
+        .createdBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId())
+        .updatedBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId())
         .build();
   }
 
@@ -341,7 +341,7 @@ public class SupplierServiceImpl implements SupplierService {
         .id(entity.getId())
         .name(entity.getName())
         .category(entity.getCategory())
-        .status(SupplierStatus.fromValue(entity.getStatus()))
+        .status(SupplierStatus.fromString(entity.getStatus()))
         .email(entity.getEmail())
         .phone(entity.getPhone())
         .build();

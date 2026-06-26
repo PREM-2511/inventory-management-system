@@ -14,6 +14,7 @@ import com.stockiq.inventory.entity.Product;
 import com.stockiq.inventory.entity.Stock;
 import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.repository.StockRepository;
+import com.stockiq.inventory.repository.NotificationRepository;
 import com.stockiq.inventory.service.StockService;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -33,11 +34,16 @@ public class StockServiceImpl implements StockService {
 
   private final ProductRepository productRepository;
   private final StockRepository stockRepository;
+  private final NotificationRepository notificationRepository;
 
-  public StockServiceImpl(ProductRepository productRepository, StockRepository stockRepository) {
+  public StockServiceImpl(
+      ProductRepository productRepository,
+      StockRepository stockRepository,
+      NotificationRepository notificationRepository) {
 
     this.productRepository = productRepository;
     this.stockRepository = stockRepository;
+    this.notificationRepository = notificationRepository;
   }
 
   /**
@@ -46,13 +52,12 @@ public class StockServiceImpl implements StockService {
    * @param correlationId String
    * @param logKey String
    * @param movementDto StockMovementDto
-   * @param loggedByEmail String
    * @return StockMovementDto
    * @throws GeneralStatusCodeErrorException if an error occurs during the operation
    */
   @Override
   public StockDto logMovement(
-      String correlationId, String logKey, StockDto movementDto, String loggedByEmail)
+      String correlationId, String logKey, StockDto movementDto, String loggedByUserId)
       throws GeneralStatusCodeErrorException {
 
     try {
@@ -99,7 +104,7 @@ public class StockServiceImpl implements StockService {
       }
 
       product.setQty(newQty);
-      product.setUpdatedBy(loggedByEmail);
+      product.setUpdatedBy(loggedByUserId);
       product.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
       productRepository.update(correlationId, logKey, product);
@@ -109,14 +114,62 @@ public class StockServiceImpl implements StockService {
               .type(movementDto.getType().getValue())
               .productId(product.getId())
               .qty(movementDto.getQty())
-              .createdBy(loggedByEmail)
+              .createdBy(loggedByUserId)
               .createdAt(Timestamp.valueOf(LocalDateTime.now()))
               .build();
 
       long transactionId = stockRepository.save(correlationId, logKey, transaction);
 
+      // Trigger automatic notification based on stock levels
+      if (movementDto.getType() == MovementType.IN) {
+        try {
+          com.stockiq.inventory.entity.Notification stockInNotif =
+              com.stockiq.inventory.entity.Notification.builder()
+                  .userId(product.getUserId())
+                  .title("Stock Restocked")
+                  .message(
+                      "Restocked "
+                          + movementDto.getQty()
+                          + " units of '"
+                          + product.getName()
+                          + "'. New quantity: "
+                          + newQty)
+                  .type("SUCCESS")
+                  .isRead(false)
+                  .createdAt(Timestamp.valueOf(LocalDateTime.now()))
+                  .build();
+          notificationRepository.save(correlationId, logKey, stockInNotif);
+        } catch (Exception e) {
+          ActivityLog.logError(
+              correlationId, logKey, SERVICE_IMPL, "NOTIFICATION_TRIGGER_ERROR", e.getMessage());
+        }
+      } else if (newQty <= product.getReorderPoint()) {
+        try {
+          com.stockiq.inventory.entity.Notification lowStockAlert =
+              com.stockiq.inventory.entity.Notification.builder()
+                  .userId(product.getUserId())
+                  .title("Low Stock Warning")
+                  .message(
+                      "Product '"
+                          + product.getName()
+                          + "' has reached low stock level ("
+                          + newQty
+                          + "/"
+                          + product.getReorderPoint()
+                          + "). Please reorder soon!")
+                  .type("WARNING")
+                  .isRead(false)
+                  .createdAt(Timestamp.valueOf(LocalDateTime.now()))
+                  .build();
+          notificationRepository.save(correlationId, logKey, lowStockAlert);
+        } catch (Exception e) {
+          ActivityLog.logError(
+              correlationId, logKey, SERVICE_IMPL, "NOTIFICATION_TRIGGER_ERROR", e.getMessage());
+        }
+      }
+
       movementDto.setId(transactionId);
-      movementDto.setUser(loggedByEmail);
+      movementDto.setUser(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserEmail());
       movementDto.setDate(
           transaction
               .getCreatedAt()

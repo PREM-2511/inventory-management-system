@@ -19,14 +19,13 @@ public enum ProductStatus {
   //         then we can use a Map<Integer, ProductStatus> static collection
   //         for better performance to avoid iterating through all enum values.
   //         VALUE_TO_STATUS_MAP.get(value)
-  public static ProductStatus fromValue(int value) {
 
+  public static ProductStatus fromValue(int value) {
     for (ProductStatus status : values()) {
       if (status.getValue() == value) {
         return status;
       }
     }
-
     throw new IllegalArgumentException("Unknown ProductStatus value: " + value);
   }
 }

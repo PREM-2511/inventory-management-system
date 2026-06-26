@@ -14,7 +14,6 @@ import com.stockiq.inventory.service.CategoryService;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
               : Status.ACTIVE.getValue());
 
       category.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+      category.setCreatedBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId());
 
       long id = categoryRepository.save(correlationId, logKey, category);
 
@@ -86,15 +86,18 @@ public class CategoryServiceImpl implements CategoryService {
    * @param logKey String
    * @param categoryDto CategoryDto
    * @param id long
-   * @param username String
    */
   @Override
-  public void update(
-      String correlationId, String logKey, CategoryDto categoryDto, long id, String username)
+  public void update(String correlationId, String logKey, CategoryDto categoryDto, long id)
       throws GeneralStatusCodeErrorException {
 
     try {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
+
+      CategoryDto existingDto =
+          categoryRepository
+              .findById(correlationId, logKey, id)
+              .orElseThrow(() -> new RuntimeException("Category not found"));
 
       Category category = toEntity(categoryDto);
 
@@ -102,12 +105,17 @@ public class CategoryServiceImpl implements CategoryService {
       category.setName(categoryDto.getName());
       category.setIcon(categoryDto.getIcon());
 
-      // Convert enum to int
+      // Convert enum to int - prevent resetting status to inactive (0)
       if (categoryDto.getStatus() != null) {
         category.setStatus(categoryDto.getStatus().getValue());
+      } else {
+        category.setStatus(
+            existingDto.getStatus() != null
+                ? existingDto.getStatus().getValue()
+                : Status.ACTIVE.getValue());
       }
 
-      category.setUpdatedBy(username);
+      category.setUpdatedBy(com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId());
       category.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
       int updated = categoryRepository.update(correlationId, logKey, category);
@@ -275,6 +283,7 @@ public class CategoryServiceImpl implements CategoryService {
    */
   private CategoryDetails toDto(Category category) {
     return CategoryDetails.builder()
+        .id(category.getId())
         .name(category.getName())
         .icon(category.getIcon())
         .status(Status.fromValue(category.getStatus()))
