@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
-
-const INITIAL_SUPPLIERS = [
-  { id: 1, name: 'TechLink Pvt Ltd', initials: 'TL', category: 'Electronics', status: 'Active', email: 'info@techlink.lk', phone: '+94 11 234 5678', color: 'from-blue-500 to-indigo-600' },
-  { id: 2, name: 'OfficeFirst Co.', initials: 'OF', category: 'Office Supplies', status: 'Active', email: 'contact@officefirst.lk', phone: '+94 11 876 5432', color: 'from-emerald-500 to-teal-500' },
-  { id: 3, name: 'FurniMart', initials: 'FM', category: 'Furniture', status: 'Pending', email: 'sales@furnimart.lk', phone: '+94 77 111 2222', color: 'from-amber-500 to-orange-500' },
-];
+import { supplierAPI, categoryAPI } from '../services/api';
 
 function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState(INITIAL_SUPPLIERS);
+  const [dbSuppliers, setDbSuppliers] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [statusesList, setStatusesList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
   
   // Modal/Form States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
-  const [formData, setFormData] = useState({ name: '', category: 'Electronics', status: 'Active', email: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', category: '', status: 'Active', email: '', phone: '' });
 
   const getInitials = (name) => {
     if (!name) return 'SU';
@@ -37,52 +37,108 @@ function SuppliersPage() {
     return gradients[code % gradients.length];
   };
 
+  const fetchSuppliers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await supplierAPI.getAll({
+        page: 0,
+        size: 100,
+        search: searchTerm
+      });
+      setDbSuppliers(res.data.content || res.data || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load suppliers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchSuppliers();
+    }, 300);
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const fetchCategoriesAndStatuses = async () => {
+      try {
+        const catRes = await categoryAPI.getAll({ page: 0, size: 100 });
+        setCategoriesList(catRes.data.content || catRes.data || []);
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+      try {
+        const statRes = await supplierAPI.getStatuses();
+        setStatusesList(statRes.data || []);
+      } catch (err) {
+        console.error('Failed to load statuses', err);
+      }
+    };
+    fetchCategoriesAndStatuses();
+  }, []);
+
   const handleOpenAddModal = () => {
     setEditingSupplier(null);
-    setFormData({ name: '', category: 'Electronics', status: 'Active', email: '', phone: '' });
+    setFormData({
+      name: '',
+      category: categoriesList[0]?.name || 'Electronics',
+      status: 'Active',
+      email: '',
+      phone: ''
+    });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (supplier) => {
     setEditingSupplier(supplier);
-    setFormData({ name: supplier.name, category: supplier.category, status: supplier.status, email: supplier.email, phone: supplier.phone });
+    setFormData({
+      name: supplier.name,
+      category: supplier.category,
+      status: supplier.status || 'Active',
+      email: supplier.email,
+      phone: supplier.phone
+    });
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this supplier?')) {
+      try {
+        await supplierAPI.delete(id);
+        fetchSuppliers();
+      } catch (err) {
+        alert(err.message || 'Failed to delete supplier');
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const initials = getInitials(formData.name);
-    
-    if (editingSupplier) {
-      setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? {
-        ...s,
+    setSubmitting(true);
+    try {
+      const payload = {
         name: formData.name,
-        initials,
         category: formData.category,
         status: formData.status,
         email: formData.email,
         phone: formData.phone
-      } : s));
-    } else {
-      const newSupplier = {
-        id: Date.now(),
-        name: formData.name,
-        initials,
-        category: formData.category,
-        status: formData.status,
-        email: formData.email,
-        phone: formData.phone,
-        color: getGradientColor(initials)
       };
-      setSuppliers([...suppliers, newSupplier]);
-    }
-    setIsModalOpen(false);
-  };
 
-  const filteredSuppliers = suppliers.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      if (editingSupplier) {
+        await supplierAPI.update(editingSupplier.id, payload);
+      } else {
+        await supplierAPI.create(payload);
+      }
+      setIsModalOpen(false);
+      fetchSuppliers();
+    } catch (err) {
+      alert(err.message || 'Failed to save supplier');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <MainLayout title="Supplier Management">
@@ -112,69 +168,94 @@ function SuppliersPage() {
           </button>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold">
+            ⚠️ {error}
+          </div>
+        )}
+
         {/* Suppliers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSuppliers.length > 0 ? (
-            filteredSuppliers.map((supplier) => (
-              <div
-                key={supplier.id}
-                className="bg-[#0b1224]/85 border border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-black/30 backdrop-blur-sm space-y-5 transition-all hover:border-slate-800 hover:-translate-y-0.5"
-              >
-                {/* Header Row: Initials Badge, Name, Status */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${supplier.color || 'from-blue-500 to-indigo-600'} text-xs font-black text-white flex items-center justify-center border border-white/10 shadow-inner`}>
-                      {supplier.initials}
-                    </div>
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-slate-200 text-sm leading-tight">{supplier.name}</h4>
-                      <p className="text-[10px] text-slate-500 font-medium">{supplier.category}</p>
-                    </div>
-                  </div>
-                  
-                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                    supplier.status === 'Active'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  }`}>
-                    {supplier.status}
-                  </span>
-                </div>
-
-                <hr className="border-slate-900/40" />
-
-                {/* Details list */}
-                <div className="space-y-2 text-xs font-semibold text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 text-blue-500/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span className="font-mono text-[10px] font-medium">{supplier.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 text-pink-500/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span className="font-mono text-[10px] font-medium">{supplier.phone}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleOpenEditModal(supplier)}
-                    className="w-full py-2 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-colors cursor-pointer text-xs font-bold text-center"
+        {loading ? (
+          <div className="text-center text-slate-500 py-12 font-semibold">Loading suppliers...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dbSuppliers.length > 0 ? (
+              dbSuppliers.map((supplier) => {
+                const initials = getInitials(supplier.name);
+                const color = getGradientColor(initials);
+                return (
+                  <div
+                    key={supplier.id}
+                    className="bg-[#0b1224]/85 border border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-black/30 backdrop-blur-sm space-y-5 transition-all hover:border-slate-800 hover:-translate-y-0.5"
                   >
-                    Edit
-                  </button>
-                </div>
+                    {/* Header Row: Initials Badge, Name, Status */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${color} text-xs font-black text-white flex items-center justify-center border border-white/10 shadow-inner`}>
+                          {initials}
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-slate-200 text-sm leading-tight">{supplier.name}</h4>
+                          <p className="text-[10px] text-slate-500 font-medium">{supplier.category}</p>
+                        </div>
+                      </div>
+                      
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                        supplier.status === 'Active'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : supplier.status === 'Pending'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : supplier.status === 'Suspended'
+                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                      }`}>
+                        {supplier.status}
+                      </span>
+                    </div>
+
+                    <hr className="border-slate-900/40" />
+
+                    {/* Details list */}
+                    <div className="space-y-2 text-xs font-semibold text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 text-blue-500/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-mono text-[10px] font-medium">{supplier.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 text-pink-500/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="font-mono text-[10px] font-medium">{supplier.phone}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => handleOpenEditModal(supplier)}
+                        className="flex-1 py-2 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-colors cursor-pointer text-xs font-bold text-center"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(supplier.id)}
+                        className="flex-1 py-2 bg-rose-950/20 hover:bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded-xl border border-rose-950/40 transition-colors cursor-pointer text-xs font-bold text-center"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-full bg-[#0b1224]/85 border border-[#1e293b]/70 p-12 rounded-2xl text-center text-slate-500 font-semibold">
+                No suppliers found.
               </div>
-            ))
-          ) : (
-            <div className="col-span-full bg-[#0b1224]/85 border border-[#1e293b]/70 p-12 rounded-2xl text-center text-slate-500 font-semibold">
-              No suppliers found.
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Modal Form Overlay */}
         {isModalOpen && (
@@ -205,10 +286,9 @@ function SuppliersPage() {
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs cursor-pointer"
                     >
-                      <option>Electronics</option>
-                      <option>Office Supplies</option>
-                      <option>Furniture</option>
-                      <option>Raw Materials</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -218,8 +298,20 @@ function SuppliersPage() {
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-xs cursor-pointer"
                     >
-                      <option>Active</option>
-                      <option>Pending</option>
+                      {statusesList.length > 0 ? (
+                        statusesList.map((stat) => (
+                          <option key={stat.value} value={stat.displayName}>
+                            {stat.displayName}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option>Active</option>
+                          <option>Pending</option>
+                          <option>Inactive</option>
+                          <option>Suspended</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -258,9 +350,10 @@ function SuppliersPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold text-white border border-blue-400/20 shadow-lg shadow-blue-500/10 cursor-pointer"
+                    disabled={submitting}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-xl text-xs font-bold text-white border border-blue-400/20 shadow-lg shadow-blue-500/10 cursor-pointer"
                   >
-                    Save Changes
+                    {submitting ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -274,3 +367,4 @@ function SuppliersPage() {
 }
 
 export default SuppliersPage;
+

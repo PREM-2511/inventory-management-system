@@ -1,181 +1,153 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
-
-const DEFAULT_USERS = [
-  {
-    id: 'default-admin',
-    fullName: 'Admin User',
-    companyName: 'StockIQ Solutions',
-    email: 'admin@company.com',
-    password: 'password',
-  }
-];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize and load user session from localStorage
+  // On app start — restore session from localStorage
   useEffect(() => {
-    // Ensure default users list exists in localStorage
-    if (!localStorage.getItem('stockiq_users')) {
-      localStorage.setItem('stockiq_users', JSON.stringify(DEFAULT_USERS));
-    }
-
     const savedToken = localStorage.getItem('stockiq_token');
-    const savedUser = localStorage.getItem('stockiq_current_user');
-
-    if (savedToken && savedUser) {
+    if (savedToken) {
       setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      // Fetch real user profile from backend using the saved token
+      authAPI.getCurrentUser()
+        .then((res) => {
+          setUser(res.data);
+        })
+        .catch(() => {
+          // Token invalid/expired — clear session
+          localStorage.removeItem('stockiq_token');
+          setToken(null);
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
-  // Helper to fetch all registered users
-  const getUsersList = () => {
-    const usersStr = localStorage.getItem('stockiq_users');
-    return usersStr ? JSON.parse(usersStr) : DEFAULT_USERS;
-  };
-
-  // Login handler
+  // Login handler — calls real backend
   const login = async (email, password) => {
-    setLoading(true);
     try {
-      // Simulate network request delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const res = await authAPI.login({ email, password });
+      const { token: jwt } = res.data;
 
-      const users = getUsersList();
-      const foundUser = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
+      // Save token to localStorage first so the interceptor picks it up
+      localStorage.setItem('stockiq_token', jwt);
+      setToken(jwt);
 
-      if (!foundUser) {
-        throw new Error('Invalid email or password');
-      }
-
-      const mockToken = `mock-jwt-token-${Math.random().toString(36).substr(2)}`;
-      
-      // Sanitized user object to expose (omit password)
-      const userProfile = {
-        id: foundUser.id,
-        fullName: foundUser.fullName,
-        companyName: foundUser.companyName,
-        email: foundUser.email,
-      };
-
-      localStorage.setItem('stockiq_token', mockToken);
-      localStorage.setItem('stockiq_current_user', JSON.stringify(userProfile));
-
-      setToken(mockToken);
+      // Fetch full profile with the new token
+      const profileRes = await authAPI.getCurrentUser();
+      const userProfile = profileRes.data;
       setUser(userProfile);
-
       return userProfile;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      // Clear any partial state on failure
+      localStorage.removeItem('stockiq_token');
+      setToken(null);
+      setUser(null);
+      throw err;
     }
   };
 
-  // Register handler
+  // Register handler — calls real backend
   const register = async (fullName, companyName, email, password) => {
-    setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Register the user (returns 201)
+      await authAPI.register({ fullName, companyName, email, password });
 
-      const users = getUsersList();
-      const emailExists = users.some(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
+      // Auto-login after successful registration
+      const loginRes = await authAPI.login({ email, password });
+      const { token: jwt } = loginRes.data;
 
-      if (emailExists) {
-        throw new Error('An account with this email already exists');
-      }
+      // Save token to localStorage first so the interceptor picks it up
+      localStorage.setItem('stockiq_token', jwt);
+      setToken(jwt);
 
-      const newUser = {
-        id: `user-${Date.now()}`,
-        fullName,
-        companyName,
-        email,
-        password,
-      };
-
-      // Save to virtual database
-      users.push(newUser);
-      localStorage.setItem('stockiq_users', JSON.stringify(users));
-
-      // Auto sign-in
-      const mockToken = `mock-jwt-token-${Math.random().toString(36).substr(2)}`;
-      const userProfile = {
-        id: newUser.id,
-        fullName: newUser.fullName,
-        companyName: newUser.companyName,
-        email: newUser.email,
-      };
-
-      localStorage.setItem('stockiq_token', mockToken);
-      localStorage.setItem('stockiq_current_user', JSON.stringify(userProfile));
-
-      setToken(mockToken);
+      // Fetch full profile
+      const profileRes = await authAPI.getCurrentUser();
+      const userProfile = profileRes.data;
       setUser(userProfile);
-
       return userProfile;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      // Clear any partial state on failure
+      localStorage.removeItem('stockiq_token');
+      setToken(null);
+      setUser(null);
+      throw err;
     }
   };
 
-  // Logout handler
+  // Logout handler — clears all session data
   const logout = () => {
     localStorage.removeItem('stockiq_token');
-    localStorage.removeItem('stockiq_current_user');
     setToken(null);
     setUser(null);
   };
 
-  // Password reset simulation
-  const resetPassword = async (email) => {
-    setLoading(true);
+  // Password reset — calls real backend API
+  const resetPassword = async (email, newPassword) => {
+    await authAPI.forgotPassword({ email, newPassword });
+    return true;
+  };
+
+  // Profile update — calls real backend API
+  const updateProfile = async (fullName, companyName, email) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const users = getUsersList();
-      const emailExists = users.some(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
+      const res = await authAPI.updateProfile({ fullName, companyName, email });
+      const { token: jwt, user: userProfile } = res.data;
 
-      if (!emailExists) {
-        throw new Error('No account found with this email address');
-      }
+      localStorage.setItem('stockiq_token', jwt);
+      setToken(jwt);
+      setUser(userProfile);
 
-      return true;
-    } finally {
-      setLoading(false);
+      return userProfile;
+    } catch (err) {
+      throw err;
     }
   };
 
-  // OAuth simulated login
-  const loginWithOAuth = async (provider) => {
-    setLoading(true);
+  const loginWithGoogle = async (idToken) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const mockToken = `mock-oauth-token-${provider}-${Math.random().toString(36).substr(2)}`;
-      
-      const userProfile = {
-        id: `oauth-${provider}-${Date.now()}`,
-        fullName: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Partner`,
-        companyName: 'StockIQ Global Network',
-        email: `${provider.toLowerCase()}@stockiq.com`,
-      };
+      const res = await authAPI.loginWithGoogle(idToken);
+      const { token: jwt } = res.data;
 
-      localStorage.setItem('stockiq_token', mockToken);
-      localStorage.setItem('stockiq_current_user', JSON.stringify(userProfile));
+      localStorage.setItem('stockiq_token', jwt);
+      setToken(jwt);
 
-      setToken(mockToken);
+      const profileRes = await authAPI.getCurrentUser();
+      const userProfile = profileRes.data;
       setUser(userProfile);
       return userProfile;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      localStorage.removeItem('stockiq_token');
+      setToken(null);
+      setUser(null);
+      throw err;
+    }
+  };
+
+  const loginWithGithub = async (code) => {
+    try {
+      const res = await authAPI.loginWithGithub(code);
+      const { token: jwt } = res.data;
+
+      localStorage.setItem('stockiq_token', jwt);
+      setToken(jwt);
+
+      const profileRes = await authAPI.getCurrentUser();
+      const userProfile = profileRes.data;
+      setUser(userProfile);
+      return userProfile;
+    } catch (err) {
+      localStorage.removeItem('stockiq_token');
+      setToken(null);
+      setUser(null);
+      throw err;
     }
   };
 
@@ -189,7 +161,9 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         resetPassword,
-        loginWithOAuth,
+        updateProfile,
+        loginWithGoogle,
+        loginWithGithub,
       }}
     >
       {children}
