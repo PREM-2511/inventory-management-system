@@ -12,12 +12,12 @@ const NotificationsPanel = ({ isOpen, onClose, onUnreadUpdate }) => {
     try {
       setLoading(true);
       const response = await notificationAPI.getAll({ page: pageNum, size: 10 });
-      const { content, last } = response.data; // PageResponse format: content (list), page, size, total
+      const { content, totalPages } = response.data;
+      const pageCount = totalPages || 0;
       
       if (append) {
         setNotifications(prev => {
           const combined = [...prev, ...content];
-          // Remove duplicates if any
           const unique = combined.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
           return unique;
         });
@@ -25,10 +25,9 @@ const NotificationsPanel = ({ isOpen, onClose, onUnreadUpdate }) => {
         setNotifications(content || []);
       }
       
-      // Determine if there are more items to fetch based on length
-      setHasMore(content && content.length === 10);
+      setHasMore(content && content.length === 10 && pageNum < pageCount);
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      // Silently ignore connection errors
     } finally {
       setLoading(false);
     }
@@ -63,7 +62,7 @@ const NotificationsPanel = ({ isOpen, onClose, onUnreadUpdate }) => {
       );
       if (onUnreadUpdate) onUnreadUpdate();
     } catch (err) {
-      console.error('Failed to mark read:', err);
+      // Silently ignore
     }
   };
 
@@ -73,18 +72,18 @@ const NotificationsPanel = ({ isOpen, onClose, onUnreadUpdate }) => {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       if (onUnreadUpdate) onUnreadUpdate();
     } catch (err) {
-      console.error('Failed to mark all read:', err);
+      // Silently ignore — backend may return 404 if all already read
     }
   };
 
   const handleDelete = async (id, e) => {
-    e.stopPropagation(); // Avoid triggering details click if any
+    e.stopPropagation();
     try {
       await notificationAPI.delete(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
       if (onUnreadUpdate) onUnreadUpdate();
     } catch (err) {
-      console.error('Failed to delete notification:', err);
+      // Silently ignore
     }
   };
 
