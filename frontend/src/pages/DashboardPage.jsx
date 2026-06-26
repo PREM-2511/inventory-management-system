@@ -1,21 +1,61 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { dashboardAPI, stockAPI } from '../services/api';
 
 function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ totalProducts: 0, totalSuppliers: 0, lowStock: 0, totalTransactions: 0 });
+  const [categories, setCategories] = useState([]);
+  const [recentTx, setRecentTx] = useState([]);
+  const [allTx, setAllTx] = useState([]);
+  const [error, setError] = useState('');
+  const [activeCategoryIdx, setActiveCategoryIdx] = useState(null);
+  const [hoveredTxPoint, setHoveredTxPoint] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        
+        // Parallel requests
+        const [summaryRes, categoriesRes, historyRes] = await Promise.all([
+          dashboardAPI.getSummary(),
+          dashboardAPI.getCategoryDistribution(),
+          stockAPI.getHistory()
+        ]);
+
+        setSummary(summaryRes.data);
+        setCategories(categoriesRes.data || []);
+        
+        const historyData = historyRes.data || [];
+        setAllTx(historyData);
+        setRecentTx(historyData.slice(0, 5));
+      } catch (err) {
+        console.error('Dashboard loading error:', err);
+        setError(err.message || 'Failed to fetch dashboard statistics.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const stats = [
     {
       label: 'TOTAL PRODUCTS',
-      value: '248',
-      pillText: '12 new this month',
-      pillClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      value: summary.totalProducts.toString(),
+      pillText: 'All items in database',
+      pillClass: 'bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-500/20',
       icon: (
         <div className="bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl shadow-lg shadow-blue-500/5">
-          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-5 h-5 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
         </div>
@@ -23,12 +63,12 @@ function DashboardPage() {
     },
     {
       label: 'TOTAL SUPPLIERS',
-      value: '34',
-      pillText: 'Active',
-      pillClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      value: summary.totalSuppliers.toString(),
+      pillText: 'Registered vendors',
+      pillClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
       icon: (
         <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl shadow-lg shadow-emerald-500/5">
-          <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
@@ -37,12 +77,18 @@ function DashboardPage() {
     },
     {
       label: 'LOW STOCK',
-      value: '18',
-      pillText: 'Needs reorder',
-      pillClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      value: summary.lowStock.toString(),
+      pillText: summary.lowStock > 0 ? 'Needs reorder' : 'Levels healthy',
+      pillClass: summary.lowStock > 0 
+        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
       icon: (
-        <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl shadow-lg shadow-amber-500/5">
-          <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <div className={`p-2.5 rounded-xl border shadow-lg ${
+          summary.lowStock > 0 
+            ? 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/5 text-amber-600 dark:text-amber-400' 
+            : 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+        }`}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
@@ -50,12 +96,12 @@ function DashboardPage() {
     },
     {
       label: 'TRANSACTIONS',
-      value: '1,204',
-      pillText: '+8% this week',
-      pillClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      value: summary.totalTransactions.toString(),
+      pillText: 'Movement events logged',
+      pillClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
       icon: (
         <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl shadow-lg shadow-emerald-500/5">
-          <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
           </svg>
         </div>
@@ -63,123 +109,476 @@ function DashboardPage() {
     }
   ];
 
-  const categories = [
-    { name: 'Electronics', count: 82, percentage: 42, color: 'bg-blue-500 shadow-blue-500/50' },
-    { name: 'Office Supplies', count: 67, percentage: 28, color: 'bg-emerald-500 shadow-emerald-500/50' },
-    { name: 'Furniture', count: 45, percentage: 18, color: 'bg-amber-500 shadow-amber-500/50' },
-    { name: 'Raw Materials', count: 54, percentage: 12, color: 'bg-purple-500 shadow-purple-500/50' }
+  const categoryColors = [
+    '#3b82f6', // blue
+    '#10b981', // emerald
+    '#f59e0b', // amber
+    '#8b5cf6', // purple
+    '#f43f5e', // rose
+    '#06b6d4'  // cyan
   ];
 
-  const transactions = [
-    { type: 'IN', name: 'Laptop Pro 15"', qty: '+20', time: '2h ago', bg: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' },
-    { type: 'OUT', name: 'USB-C Cable', qty: '-5', time: '4h ago', bg: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' },
-    { type: 'IN', name: 'Office Chair', qty: '+8', time: '6h ago', bg: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' },
-    { type: 'OUT', name: 'A4 Paper Box', qty: '-12', time: 'Yesterday', bg: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' }
+  const categoryTailwindColors = [
+    'bg-blue-500 shadow-blue-500/50',
+    'bg-emerald-500 shadow-emerald-500/50',
+    'bg-amber-500 shadow-amber-500/50',
+    'bg-purple-500 shadow-purple-500/50',
+    'bg-rose-500 shadow-rose-500/50',
+    'bg-cyan-500 shadow-cyan-500/50'
   ];
+
+  // DONUT CHART CALCULATIONS
+  const radius = 35;
+  const circumference = 2 * Math.PI * radius; // ~219.91
+  let accumulatedPercent = 0;
+
+  const donutSlices = categories.map((cat, idx) => {
+    const percentage = cat.percentage || 0;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    const rotation = (accumulatedPercent / 100) * 360;
+    accumulatedPercent += percentage;
+    return {
+      ...cat,
+      offset: strokeDashoffset,
+      rotation: rotation,
+      color: categoryColors[idx % categoryColors.length]
+    };
+  });
+
+  // TREND CHART — separate IN and OUT per time slot
+  const getTrendData = () => {
+    if (allTx.length === 0) return { points: [], labels: [], maxVal: 10 };
+
+    const recent = [...allTx].reverse().slice(-7);
+    while (recent.length < 7) recent.unshift({ qty: 0, date: '', type: 'IN', product: 'N/A' });
+
+    const labels = recent.map(tx => {
+      if (!tx.date) return '';
+      try {
+        const d = new Date(tx.date);
+        return isNaN(d) ? tx.date.slice(0, 5) : `${d.getDate()}/${d.getMonth() + 1}`;
+      } catch { return tx.date.slice(0, 5) || ''; }
+    });
+
+    const inVals  = recent.map(tx => (tx.type?.toUpperCase() === 'IN'  ? (tx.qty || 0) : 0));
+    const outVals = recent.map(tx => (tx.type?.toUpperCase() === 'OUT' ? (tx.qty || 0) : 0));
+    const maxVal  = Math.max(...inVals, ...outVals, 10);
+
+    const points = recent.map((tx, i) => ({
+      x: (i / 6) * 92 + 4,
+      inY:  10 + 60 - (inVals[i]  / maxVal) * 55,
+      outY: 10 + 60 - (outVals[i] / maxVal) * 55,
+      inVal: inVals[i],
+      outVal: outVals[i],
+      label: labels[i],
+      original: tx
+    }));
+
+    return { points, labels, maxVal };
+  };
+
+  const { points: trendPoints, maxVal: trendMax } = getTrendData();
+
+  // Smooth cubic bezier through points
+  const smoothPath = (pts, yKey) => {
+    if (pts.length < 2) return '';
+    return pts.map((p, i) => {
+      if (i === 0) return `M ${p.x},${p[yKey]}`;
+      const prev = pts[i - 1];
+      const cp1x = prev.x + (p.x - prev.x) / 2;
+      const cp2x = p.x - (p.x - prev.x) / 2;
+      return `C ${cp1x},${prev[yKey]} ${cp2x},${p[yKey]} ${p.x},${p[yKey]}`;
+    }).join(' ');
+  };
+
+  const inLine   = smoothPath(trendPoints, 'inY');
+  const outLine  = smoothPath(trendPoints, 'outY');
+  const inArea   = trendPoints.length > 0 ? inLine  + ` L ${trendPoints[trendPoints.length-1].x},70 L ${trendPoints[0].x},70 Z` : '';
+  const outArea  = trendPoints.length > 0 ? outLine + ` L ${trendPoints[trendPoints.length-1].x},70 L ${trendPoints[0].x},70 Z` : '';
+
+  const yLabels = [0, Math.round(trendMax / 2), trendMax].map(v => ({
+    v,
+    y: 10 + 60 - (v / trendMax) * 55
+  }));
 
   return (
     <MainLayout title="Dashboard">
       <div className="p-6 relative z-10 space-y-6 sm:space-y-8">
         
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat, idx) => (
-            <div
-              key={idx}
-              className="bg-[#0b1224]/85 border border-[#1e293b]/70 p-5 rounded-2xl flex flex-col justify-between shadow-lg shadow-black/30 backdrop-blur-sm transition-all hover:border-slate-800 hover:-translate-y-0.5"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">
-                    {stat.label}
-                  </span>
-                  <h3 className="text-3xl font-black font-display text-white tracking-tight leading-none">
-                    {stat.value}
-                  </h3>
-                </div>
-                {stat.icon}
-              </div>
-              <div className="pt-4">
-                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${stat.pillClass}`}>
-                  {stat.pillText}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Two-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Stock by Category Panel */}
-          <div className="lg:col-span-2 bg-[#0b1224]/85 border border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-black/30 backdrop-blur-sm flex flex-col justify-between">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">Stock by category</h3>
-                <button
-                  onClick={() => navigate('/categories')}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-semibold"
-                >
-                  View all
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                {categories.map((category, idx) => (
-                  <div key={idx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                      <span>{category.name}</span>
-                      <div className="space-x-2 font-mono">
-                        <span className="text-slate-500 text-[10px]">{category.count} items</span>
-                        <span className="text-white font-bold">{category.percentage}%</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-[#141b30] h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`${category.color} h-full rounded-full transition-all duration-700`}
-                        style={{ width: `${category.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* Error Alert */}
+        {error && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+            ⚠️ {error}
           </div>
+        )}
 
-          {/* Recent Transactions Panel */}
-          <div className="bg-[#0b1224]/85 border border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-black/30 backdrop-blur-sm space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">Recent transactions</h3>
-              <button
-                onClick={() => navigate('/stock')}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-semibold"
-              >
-                See all
-              </button>
-            </div>
-
-            <div className="space-y-3.5">
-              {transactions.map((tx, idx) => (
+        {/* Loading overlay or stats list */}
+        {loading ? (
+          <div className="text-center text-slate-500 py-24 font-semibold">
+            Loading dashboard data...
+          </div>
+        ) : (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {stats.map((stat, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between py-1 border-b border-slate-900/40 last:border-0"
+                  className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-5 rounded-2xl flex flex-col justify-between shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm transition-all hover:border-slate-300 dark:hover:border-slate-800 hover:-translate-y-0.5"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black font-mono leading-none ${tx.bg}`}>
-                      {tx.type}
-                    </span>
-                    <div className="space-y-0.5">
-                      <p className="font-bold text-slate-200 text-xs">{tx.name}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">{tx.time}</p>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono uppercase tracking-wider block">
+                        {stat.label}
+                      </span>
+                      <h3 className="text-3xl font-black font-display text-slate-800 dark:text-white tracking-tight leading-none">
+                        {stat.value}
+                      </h3>
                     </div>
+                    {stat.icon}
                   </div>
-                  <span className={`font-mono font-black text-xs ${tx.type === 'IN' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {tx.qty}
-                  </span>
+                  <div className="pt-4">
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${stat.pillClass}`}>
+                      {stat.pillText}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+
+            {/* PREMIUM DUAL TREND CHART */}
+            <div className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm">
+              {/* Header */}
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Inventory Activity Trend</h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Stock IN vs OUT — last 7 movements</p>
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/80 mb-0.5">Total In</p>
+                    <p className="text-lg font-black text-emerald-500 leading-none">
+                      +{allTx.filter(t => t.type?.toUpperCase() === 'IN').reduce((s, t) => s + (t.qty || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-rose-500/80 mb-0.5">Total Out</p>
+                    <p className="text-lg font-black text-rose-500 leading-none">
+                      -{allTx.filter(t => t.type?.toUpperCase() === 'OUT').reduce((s, t) => s + (t.qty || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1.5 ml-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-0.5 rounded-full bg-emerald-500 inline-block" />
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Stock In</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-0.5 rounded-full bg-rose-500 inline-block" />
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Stock Out</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {trendPoints.length > 0 ? (
+                <div className="relative">
+                  <svg
+                    viewBox="0 0 100 80"
+                    className="w-full"
+                    style={{ height: '180px' }}
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="inGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.30" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                      </linearGradient>
+                      <linearGradient id="outGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.30" />
+                        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.02" />
+                      </linearGradient>
+                      <filter id="glow-in">
+                        <feGaussianBlur stdDeviation="0.8" result="blur" />
+                        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                      </filter>
+                      <filter id="glow-out">
+                        <feGaussianBlur stdDeviation="0.8" result="blur" />
+                        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                      </filter>
+                    </defs>
+
+                    {/* Horizontal Grid Lines */}
+                    {yLabels.map(({ y }, i) => (
+                      <line key={i} x1="4" y1={y} x2="96" y2={y}
+                        stroke="currentColor" strokeOpacity="0.07" strokeWidth="0.5" strokeDasharray="2 2"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    ))}
+
+                    {/* Y-axis labels */}
+                    {yLabels.map(({ v, y }, i) => (
+                      <text key={i} x="2" y={y + 1}
+                        fontSize="3" textAnchor="end"
+                        className="fill-slate-400 dark:fill-slate-600" style={{ fontFamily: 'monospace' }}
+                      >{v}</text>
+                    ))}
+
+                    {/* X-axis baseline */}
+                    <line x1="4" y1="70" x2="96" y2="70"
+                      stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.5"
+                      className="text-slate-900 dark:text-white"
+                    />
+
+                    {/* IN Area fill */}
+                    {inArea  && <path d={inArea}  fill="url(#inGrad)"  />}
+                    {/* OUT Area fill */}
+                    {outArea && <path d={outArea} fill="url(#outGrad)" />}
+
+                    {/* IN Line */}
+                    {inLine  && <path d={inLine}  fill="none" stroke="#10b981" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-in)" />}
+                    {/* OUT Line */}
+                    {outLine && <path d={outLine} fill="none" stroke="#f43f5e" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-out)" />}
+
+                    {/* IN Data Points */}
+                    {trendPoints.map((p, i) => p.inVal > 0 && (
+                      <g key={`in-${i}`}
+                        onMouseEnter={() => setHoveredTxPoint(`in-${i}`)}
+                        onMouseLeave={() => setHoveredTxPoint(null)}
+                        className="cursor-pointer"
+                      >
+                        <circle cx={p.x} cy={p.inY} r="2.2"
+                          fill="#0b1224" stroke="#10b981" strokeWidth="1"
+                          style={{ filter: hoveredTxPoint === `in-${i}` ? 'drop-shadow(0 0 2px #10b981)' : 'none' }}
+                        />
+                        {hoveredTxPoint === `in-${i}` && (
+                          <circle cx={p.x} cy={p.inY} r="4.5" fill="#10b981" fillOpacity="0.2" />
+                        )}
+                      </g>
+                    ))}
+
+                    {/* OUT Data Points */}
+                    {trendPoints.map((p, i) => p.outVal > 0 && (
+                      <g key={`out-${i}`}
+                        onMouseEnter={() => setHoveredTxPoint(`out-${i}`)}
+                        onMouseLeave={() => setHoveredTxPoint(null)}
+                        className="cursor-pointer"
+                      >
+                        <circle cx={p.x} cy={p.outY} r="2.2"
+                          fill="#0b1224" stroke="#f43f5e" strokeWidth="1"
+                          style={{ filter: hoveredTxPoint === `out-${i}` ? 'drop-shadow(0 0 2px #f43f5e)' : 'none' }}
+                        />
+                        {hoveredTxPoint === `out-${i}` && (
+                          <circle cx={p.x} cy={p.outY} r="4.5" fill="#f43f5e" fillOpacity="0.2" />
+                        )}
+                      </g>
+                    ))}
+
+                    {/* X-axis date labels */}
+                    {trendPoints.map((p, i) => p.label && (
+                      <text key={`lbl-${i}`} x={p.x} y="77"
+                        fontSize="2.8" textAnchor="middle"
+                        className="fill-slate-400 dark:fill-slate-600" style={{ fontFamily: 'monospace' }}
+                      >{p.label}</text>
+                    ))}
+                  </svg>
+
+                  {/* Hover Tooltip */}
+                  {hoveredTxPoint !== null && (() => {
+                    const [type, idxStr] = String(hoveredTxPoint).split('-');
+                    const i = parseInt(idxStr);
+                    const p = trendPoints[i];
+                    if (!p) return null;
+                    const isIn = type === 'in';
+                    const val = isIn ? p.inVal : p.outVal;
+                    return (
+                      <div
+                        className="absolute bottom-8 pointer-events-none z-20"
+                        style={{ left: `${Math.min(p.x, 78)}%`, transform: 'translateX(-50%)' }}
+                      >
+                        <div className="bg-slate-950/95 border border-slate-800 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-md min-w-max">
+                          <p className="text-[10px] font-bold text-white mb-0.5">{p.original.product}</p>
+                          <p className={`text-[10px] font-mono font-black ${ isIn ? 'text-emerald-400' : 'text-rose-400' }`}>
+                            {isIn ? `+${val}` : `-${val}`} units
+                          </p>
+                          {p.label && <p className="text-[9px] text-slate-500 font-mono mt-0.5">{p.label}</p>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-12">No transaction data available yet.</p>
+              )}
+            </div>
+
+            {/* Two-Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Interactive SVG Donut Chart for Categories */}
+              <div className="lg:col-span-2 bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Stock distribution</h3>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Item percentage share per category</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/categories')}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors font-semibold"
+                  >
+                    View all
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  
+                  {/* Left Column: Donut Drawing */}
+                  {donutSlices.length > 0 ? (
+                    <div className="relative flex justify-center items-center">
+                      <svg width="180" height="180" viewBox="0 0 100 100" className="transform -rotate-90">
+                        {donutSlices.map((slice, idx) => {
+                          const isActive = activeCategoryIdx === idx;
+                          return (
+                            <circle
+                              key={idx}
+                              cx="50"
+                              cy="50"
+                              r={radius}
+                              fill="transparent"
+                              stroke={slice.color}
+                              strokeWidth={isActive ? "10" : "8"}
+                              strokeDasharray={circumference}
+                              strokeDashoffset={slice.offset}
+                              transform={`rotate(${slice.rotation} 50 50)`}
+                              className="cursor-pointer transition-all duration-200"
+                              style={{
+                                filter: isActive ? `drop-shadow(0px 0px 4px ${slice.color}80)` : 'none'
+                              }}
+                              onMouseEnter={() => setActiveCategoryIdx(idx)}
+                              onMouseLeave={() => setActiveCategoryIdx(null)}
+                            />
+                          );
+                        })}
+                      </svg>
+                      
+                      {/* Center Label */}
+                      <div className="absolute text-center select-none pointer-events-none">
+                        {activeCategoryIdx !== null ? (
+                          <>
+                            <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                              {donutSlices[activeCategoryIdx].name}
+                            </p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white">
+                              {donutSlices[activeCategoryIdx].percentage}%
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Total Items</p>
+                            <p className="text-2xl font-black text-slate-800 dark:text-white">{summary.totalProducts}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 dark:text-slate-500 text-xs py-12">No data to display.</div>
+                  )}
+
+                  {/* Right Column: Legend with Progress Indicators */}
+                  <div className="space-y-3.5">
+                    {donutSlices.length > 0 ? (
+                      donutSlices.map((category, idx) => {
+                        const colorClass = categoryTailwindColors[idx % categoryTailwindColors.length];
+                        const isActive = activeCategoryIdx === idx;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${
+                              isActive 
+                                ? 'bg-slate-100/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 translate-x-1' 
+                                : 'bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-slate-900/20'
+                            }`}
+                            onMouseEnter={() => setActiveCategoryIdx(idx)}
+                            onMouseLeave={() => setActiveCategoryIdx(null)}
+                          >
+                            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full inline-block"
+                                  style={{ backgroundColor: category.color }}
+                                />
+                                <span>{category.name}</span>
+                              </div>
+                              <div className="space-x-2 font-mono text-[10px]">
+                                <span className="text-slate-400 dark:text-slate-500">{category.count} items</span>
+                                <span className="text-slate-900 dark:text-white font-bold">{category.percentage}%</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-[#141b30] h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className={`${colorClass} h-full rounded-full transition-all duration-700`}
+                                style={{ width: `${category.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-center text-xs text-slate-400 dark:text-slate-500">No categories recorded.</p>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Recent Transactions Panel */}
+              <div className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Recent transactions</h3>
+                  <button
+                    onClick={() => navigate('/stock')}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors font-semibold"
+                  >
+                    See all
+                  </button>
+                </div>
+
+                <div className="space-y-3.5">
+                  {recentTx.length > 0 ? (
+                    recentTx.map((tx, idx) => {
+                      const isIncoming = tx.type?.toUpperCase() === 'IN';
+                      const bgClass = isIncoming
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/20';
+                      return (
+                        <div
+                          key={tx.id || idx}
+                          className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-900/40 last:border-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black font-mono leading-none ${bgClass}`}>
+                              {tx.type}
+                            </span>
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">{tx.product}</p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium font-mono">{tx.date || 'unknown date'}</p>
+                            </div>
+                          </div>
+                          <span className={`font-mono font-black text-xs ${isIncoming ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+                            {isIncoming ? `+${tx.qty}` : `-${tx.qty}`}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-6">No recent transactions recorded.</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </>
+        )}
 
       </div>
     </MainLayout>
