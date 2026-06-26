@@ -52,14 +52,15 @@ public interface NotificationService {
    */
   long countUnread(String correlationId, String logKey) throws GeneralStatusCodeErrorException;
 
-/**
- * Mark a single notification as read.
- *
- * @param correlationId request tracking id for logging
- * @param logKey logging context key
- * @param id notification id
- */
-  void markOneRead(String correlationId, String logKey, long id) throws GeneralStatusCodeErrorException;
+  /**
+   * Mark a single notification as read.
+   *
+   * @param correlationId request tracking id for logging
+   * @param logKey logging context key
+   * @param id notification id
+   */
+  void markOneRead(String correlationId, String logKey, long id)
+      throws GeneralStatusCodeErrorException;
 
   /**
    * Mark all notifications as read for the current user.
@@ -87,10 +88,7 @@ public interface NotificationService {
    * @return int
    * @throws Exception if an error occurs during the operation
    */
-  int countOldNotifications(
-      String correlationId,
-      String logKey,
-      String cutoffDate)
+  int countOldNotifications(String correlationId, String logKey, String cutoffDate)
       throws Exception;
 
   /**
@@ -104,9 +102,5 @@ public interface NotificationService {
    * @throws Exception if an error occurs during the operation
    */
   int deleteOldNotificationsBatch(
-      String correlationId,
-      String logKey,
-      String cutoffDate,
-      int batchSize)
-      throws Exception;
+      String correlationId, String logKey, String cutoffDate, int batchSize) throws Exception;
 }

@@ -8,5 +8,4 @@ import lombok.Data;
 public class DeleteNotificationResponse {
 
   private String message;
-
 }

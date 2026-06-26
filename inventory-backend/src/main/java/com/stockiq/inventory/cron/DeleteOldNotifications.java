@@ -57,28 +57,16 @@ public class DeleteOldNotifications {
 
       LocalDateTime cutoffDate = now.minusDays(deleteDays);
 
-      String cutoffDateStr =
-          cutoffDate.format(DateTimeFormatter.ofPattern(dateTimeFormat));
+      String cutoffDateStr = cutoffDate.format(DateTimeFormatter.ofPattern(dateTimeFormat));
 
       totalCount =
-          notificationService.countOldNotifications(
-              correlationId,
-              MAIN_LOG_KEY,
-              cutoffDateStr);
+          notificationService.countOldNotifications(correlationId, MAIN_LOG_KEY, cutoffDateStr);
 
-      ActivityLog.logInfo(
-          correlationId,
-          MAIN_LOG_KEY,
-          COMPONENT,
-          "cutoffDate - " + cutoffDateStr);
+      ActivityLog.logInfo(correlationId, MAIN_LOG_KEY, COMPONENT, "cutoffDate - " + cutoffDateStr);
 
       if (totalCount == 0) {
 
-        ActivityLog.logInfo(
-            correlationId,
-            MAIN_LOG_KEY,
-            COMPONENT,
-            "No old notifications found.");
+        ActivityLog.logInfo(correlationId, MAIN_LOG_KEY, COMPONENT, "No old notifications found.");
 
         return;
       }
@@ -86,10 +74,7 @@ public class DeleteOldNotifications {
       do {
 
         notificationService.deleteOldNotificationsBatch(
-            correlationId,
-            MAIN_LOG_KEY,
-            cutoffDateStr,
-            batchSize);
+            correlationId, MAIN_LOG_KEY, cutoffDateStr, batchSize);
 
         currentCount += batchSize;
 
@@ -97,21 +82,13 @@ public class DeleteOldNotifications {
             correlationId,
             MAIN_LOG_KEY,
             COMPONENT,
-            TOTAL_COUNT_LOG
-                + totalCount
-                + CURRENT_COUNT_LOG
-                + currentCount);
+            TOTAL_COUNT_LOG + totalCount + CURRENT_COUNT_LOG + currentCount);
 
       } while (currentCount < totalCount);
 
     } catch (Exception e) {
 
-      ActivityLog.logError(
-          correlationId,
-          MAIN_LOG_KEY,
-          COMPONENT,
-          "exception_log",
-          e.getMessage());
+      ActivityLog.logError(correlationId, MAIN_LOG_KEY, COMPONENT, "exception_log", e.getMessage());
     }
 
     ActivityLog.logInfo(correlationId, MAIN_LOG_KEY, COMPONENT, END_LOG);

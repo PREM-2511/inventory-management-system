@@ -27,5 +27,4 @@ public class NotificationDto {
   private Boolean isRead;
 
   private String createdAt;
-
 }

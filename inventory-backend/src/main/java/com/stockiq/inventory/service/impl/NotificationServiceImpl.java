@@ -423,29 +423,18 @@ public class NotificationServiceImpl implements NotificationService {
    * @throws Exception if an error occurs during the operation
    */
   @Override
-  public int countOldNotifications(
-      String correlationId,
-      String logKey,
-      String cutoffDate)
+  public int countOldNotifications(String correlationId, String logKey, String cutoffDate)
       throws Exception {
 
     ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
     try {
 
-      return notificationRepository.countOldNotifications(
-          correlationId,
-          logKey,
-          cutoffDate);
+      return notificationRepository.countOldNotifications(correlationId, logKey, cutoffDate);
 
     } catch (Exception e) {
 
-      ActivityLog.logError(
-          correlationId,
-          logKey,
-          SERVICE_IMPL,
-          EXCEPTION_LOG,
-          e.getMessage());
+      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
 
       throw e;
     }
@@ -463,30 +452,18 @@ public class NotificationServiceImpl implements NotificationService {
    */
   @Override
   public int deleteOldNotificationsBatch(
-      String correlationId,
-      String logKey,
-      String cutoffDate,
-      int batchSize)
-      throws Exception {
+      String correlationId, String logKey, String cutoffDate, int batchSize) throws Exception {
 
     ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
     try {
 
       return notificationRepository.deleteOldNotificationsBatch(
-          correlationId,
-          logKey,
-          cutoffDate,
-          batchSize);
+          correlationId, logKey, cutoffDate, batchSize);
 
     } catch (Exception e) {
 
-      ActivityLog.logError(
-          correlationId,
-          logKey,
-          SERVICE_IMPL,
-          EXCEPTION_LOG,
-          e.getMessage());
+      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
 
       throw e;
     }

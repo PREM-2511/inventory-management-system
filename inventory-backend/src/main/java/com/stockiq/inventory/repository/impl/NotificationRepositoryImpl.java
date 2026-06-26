@@ -290,10 +290,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
    * @throws Exception if an error occurs during the operation
    */
   @Override
-  public int countOldNotifications(
-      String correlationId,
-      String logKey,
-      String cutoffDate)
+  public int countOldNotifications(String correlationId, String logKey, String cutoffDate)
       throws Exception {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
@@ -328,11 +325,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
    */
   @Override
   public int deleteOldNotificationsBatch(
-      String correlationId,
-      String logKey,
-      String cutoffDate,
-      int batchSize)
-      throws Exception {
+      String correlationId, String logKey, String cutoffDate, int batchSize) throws Exception {
 
     ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
 

@@ -91,12 +91,9 @@ public interface NotificationRepository {
    */
   int delete(String correlationId, String logKey, long id) throws Exception;
 
-  int countOldNotifications(String correlationId,
-      String logKey,
-      String cutoffDate) throws Exception;
+  int countOldNotifications(String correlationId, String logKey, String cutoffDate)
+      throws Exception;
 
-  int deleteOldNotificationsBatch(String correlationId,
-      String logKey,
-      String cutoffDate,
-      int batchSize) throws Exception;
+  int deleteOldNotificationsBatch(
+      String correlationId, String logKey, String cutoffDate, int batchSize) throws Exception;
 }
