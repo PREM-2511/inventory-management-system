@@ -77,13 +77,13 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Backdrop overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-[#02040a]/80 backdrop-blur-xs z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-[#02040a]/80 dark:bg-[#02040a]/80 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden transition-opacity"
           onClick={onClose}
         />
       )}
       
       <aside
-        className={`w-56 bg-[#090e1a] border-r border-[#141b30] p-4 flex flex-col justify-between h-screen fixed left-0 top-0 overflow-y-auto z-50 transition-transform duration-300 md:translate-x-0 ${
+        className={`w-56 bg-white dark:bg-[#090e1a] border-r border-slate-200/60 dark:border-[#141b30] p-4 flex flex-col justify-between h-screen fixed left-0 top-0 overflow-y-auto z-50 transition-all duration-300 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -107,7 +107,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
               </div>
               <div>
-                <span className="font-display font-black text-sm text-white tracking-tight block leading-none">StockIQ</span>
+                <span className="font-display font-black text-sm text-slate-800 dark:text-white tracking-tight block leading-none">StockIQ</span>
                 <span className="text-[8px] text-slate-500 font-mono tracking-wider uppercase block mt-0.5 font-bold">Smart Inventory</span>
               </div>
             </div>
@@ -115,7 +115,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Mobile Sidebar Close Button */}
             <button
               onClick={onClose}
-              className="md:hidden p-1.5 hover:bg-slate-800/60 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="md:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -136,8 +136,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-between border cursor-pointer group ${
                     active
-                      ? 'bg-[#1e293b]/60 text-blue-400 border-slate-800/50 shadow-inner'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/10 border-transparent'
+                      ? 'bg-blue-50/70 dark:bg-[#1e293b]/60 text-blue-600 dark:text-blue-400 border-blue-100/50 dark:border-slate-800/50 shadow-sm dark:shadow-inner font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/10 border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -160,14 +160,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             navigate('/login');
             if (onClose) onClose();
           }}
-          className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-red-950/20 transition-all border border-slate-800/40 hover:border-red-500/30 flex items-center gap-2.5 justify-center cursor-pointer"
+          className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-all border border-slate-200 dark:border-slate-800/40 hover:border-red-200 dark:hover:border-red-500/30 flex items-center gap-2.5 justify-center cursor-pointer"
         >
           <span>🚪</span>
           Logout
         </button>
-        </aside>
-        </>
-    );
-  };
+      </aside>
+    </>
+  );
+};
 
 export default Sidebar;
