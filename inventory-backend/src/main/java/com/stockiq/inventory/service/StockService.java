@@ -13,12 +13,11 @@ public interface StockService {
    * @param correlationId String
    * @param logKey String
    * @param movementDto StockMovementDto
-   * @param loggedByEmail String
    * @return StockMovementDto
    * @throws GeneralStatusCodeErrorException if an error occurs during the operation
    */
   StockDto logMovement(
-      String correlationId, String logKey, StockDto movementDto, String loggedByEmail)
+      String correlationId, String logKey, StockDto movementDto, String loggedByUserId)
       throws GeneralStatusCodeErrorException;
 
   /**

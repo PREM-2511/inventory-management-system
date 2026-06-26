@@ -173,6 +173,7 @@ public class SupplierController {
       Map<String, Object> map = new HashMap<>();
       map.put("name", status.name());
       map.put("value", status.getValue());
+      map.put("displayName", status.toValue());
       list.add(map);
     }
     return ResponseEntity.ok(list);

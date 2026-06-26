@@ -11,8 +11,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -50,15 +48,10 @@ public class StockController {
 
     ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
 
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    String finalUserEmail =
-        (auth != null
-                && auth.getPrincipal() != null
-                && !auth.getPrincipal().toString().equals("anonymousUser"))
-            ? auth.getPrincipal().toString()
-            : userEmail;
+    String currentUserId = com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserId();
+    String finalUserId = (currentUserId != null) ? currentUserId : "0";
 
-    StockDto result = stockService.logMovement(correlationId, logKey, movementDto, finalUserEmail);
+    StockDto result = stockService.logMovement(correlationId, logKey, movementDto, finalUserId);
 
     return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.CREATE.getValue()))
         .body(

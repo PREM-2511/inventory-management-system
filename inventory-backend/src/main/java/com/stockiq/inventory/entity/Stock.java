@@ -9,6 +9,7 @@ import lombok.*;
 @Builder
 public class Stock {
   private long id;
+  private Long userId;
   private int type; // 'IN' or 'OUT'
   private long productId;
   private int qty;

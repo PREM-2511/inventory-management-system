@@ -21,16 +21,18 @@ public class JwtUtil {
   }
 
   /**
-   * Generate a signed JWT token containing email and role claims.
+   * Generate a signed JWT token containing email, role, and userId claims.
    *
-   * @param email String
-   * @param role  String
+   * @param email  String
+   * @param role   String
+   * @param userId long
    * @return String JWT token
    */
-  public String generateToken(String email, String role) {
+  public String generateToken(String email, String role, long userId) {
     return Jwts.builder()
         .subject(email)
         .claim("role", role)
+        .claim("userId", userId)
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
         .signWith(getSigningKey())
@@ -45,6 +47,20 @@ public class JwtUtil {
    */
   public String extractEmail(String token) {
     return parseClaims(token).getSubject();
+  }
+
+  /**
+   * Extract userId claim from JWT token.
+   *
+   * @param token String
+   * @return Long userId
+   */
+  public Long extractUserId(String token) {
+    Object userId = parseClaims(token).get("userId");
+    if (userId instanceof Number) {
+      return ((Number) userId).longValue();
+    }
+    return null;
   }
 
   /**

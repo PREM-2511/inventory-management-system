@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class CategoryDetails {
+  private Long id;
   private String name;
   private String icon;
   private Status status;

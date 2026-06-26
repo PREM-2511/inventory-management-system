@@ -117,6 +117,8 @@ public class UserRepositoryImpl implements UserRepository {
             company_name = :companyName,
             email = :email,
             password = :password,
+            created_by = :createdBy,
+            user_id = :userId,
             updated_by = :updatedBy,
             updated_at = :updatedAt
         WHERE id = :id

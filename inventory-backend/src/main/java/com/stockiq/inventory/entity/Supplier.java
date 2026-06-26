@@ -9,9 +9,10 @@ import lombok.*;
 @Builder
 public class Supplier {
   private long id;
+  private Long userId;
   private String name;
   private String category;
-  private int status;
+  private String status;
   private String email;
   private String phone;
   private String createdBy;
