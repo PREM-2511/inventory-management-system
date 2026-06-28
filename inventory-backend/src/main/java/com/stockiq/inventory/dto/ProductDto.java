@@ -13,6 +13,7 @@ import lombok.*;
 @Builder
 public class ProductDto {
   private Long id;
+  private Long userId;
 
   @NotBlank(message = "Product name is required")
   private String name;

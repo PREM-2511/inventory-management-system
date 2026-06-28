@@ -290,4 +290,22 @@ public class ProductRepositoryImpl implements ProductRepository {
             "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
         BeanPropertyRowMapper.newInstance(ProductDto.class));
   }
+
+  /**
+   * Get all low stock products across all users (no SecurityContext — for background jobs only).
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @return List<ProductDto>
+   */
+  @Override
+  public List<ProductDto> getAllLowStockProducts(String correlationId, String logKey) {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql = SELECT_DTO + " WHERE p.qty <= p.reorder_point ORDER BY p.qty ASC";
+
+    return jdbcTemplate.query(
+        sql, new MapSqlParameterSource(), BeanPropertyRowMapper.newInstance(ProductDto.class));
+  }
 }

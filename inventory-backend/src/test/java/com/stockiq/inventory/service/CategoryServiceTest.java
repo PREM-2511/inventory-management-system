@@ -98,6 +98,26 @@ class CategoryServiceTest {
   }
 
   @Test
+  @DisplayName("save category uses ACTIVE status when dto status is null")
+  void save_UsesDefaultActiveStatus_WhenStatusIsNull() throws Exception {
+    // Arrange
+    categoryDto.setStatus(null);
+
+    when(categoryRepository.save(anyString(), anyString(), any(Category.class))).thenReturn(1L);
+
+    // Act
+    CategoryDto result = categoryService.save(CORRELATION_ID, LOG_KEY, categoryDto);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1L, result.getId());
+    assertEquals(Status.ACTIVE, result.getStatus());
+
+    // Verify
+    verify(categoryRepository, times(1)).save(anyString(), anyString(), any(Category.class));
+  }
+
+  @Test
   @DisplayName("update category success")
   void update_Success() throws Exception {
     // Arrange
@@ -158,6 +178,32 @@ class CategoryServiceTest {
     assertThrows(
         GeneralStatusCodeErrorException.class,
         () -> categoryService.update(CORRELATION_ID, LOG_KEY, categoryDto, 1L));
+  }
+
+  @Test
+  @DisplayName("update uses existing category status when dto status is null")
+  void update_UsesExistingStatus_WhenDtoStatusIsNull() throws Exception {
+    // Arrange
+    categoryDto.setStatus(null);
+
+    CategoryDto existingCategory = new CategoryDto();
+    existingCategory.setId(1L);
+    existingCategory.setName("Electronics");
+    existingCategory.setIcon("icon.png");
+    existingCategory.setStatus(Status.INACTIVE);
+
+    when(categoryRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingCategory));
+
+    when(categoryRepository.update(anyString(), anyString(), any(Category.class))).thenReturn(1);
+
+    // Act
+    assertDoesNotThrow(() -> categoryService.update(CORRELATION_ID, LOG_KEY, categoryDto, 1L));
+
+    // Verify
+    verify(categoryRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
+    verify(categoryRepository, times(1)).update(anyString(), anyString(), any(Category.class));
   }
 
   @Test

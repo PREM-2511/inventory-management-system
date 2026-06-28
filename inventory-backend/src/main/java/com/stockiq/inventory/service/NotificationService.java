@@ -103,4 +103,24 @@ public interface NotificationService {
    */
   int deleteOldNotificationsBatch(
       String correlationId, String logKey, String cutoffDate, int batchSize) throws Exception;
+
+  /**
+   * Check if an unread low-stock notification already exists and create one if not.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param userId long
+   * @param productName String
+   * @param qty int
+   * @param reorderPoint int
+   * @throws Exception if an error occurs during the operation
+   */
+  void checkAndCreateLowStockNotification(
+      String correlationId,
+      String logKey,
+      long userId,
+      String productName,
+      int qty,
+      int reorderPoint)
+      throws Exception;
 }

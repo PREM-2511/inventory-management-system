@@ -394,284 +394,288 @@ public class AuthServiceImpl implements AuthService {
     }
   }
 
-  /**
-   * Login With Google
-   *
-   * @param correlationId String
-   * @param logKey String
-   * @param tokenStr String
-   * @return LoginResponse
-   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
-   */
-  @Override
-  public LoginResponse loginWithGoogle(String correlationId, String logKey, String tokenStr)
-      throws GeneralStatusCodeErrorException {
-
-    try {
-
-      ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
-
-      String email = null;
-      String name = null;
-
-      // Determine whether the token is an ID token or an access token
-      if (tokenStr.startsWith("ey")) {
-
-        // Verify Google ID token using Google API
-        GoogleIdTokenVerifier verifier =
-            new GoogleIdTokenVerifier.Builder(
-                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
-                .setAudience(Collections.singletonList(oauthConfig.getGoogle().getClientId()))
-                .build();
-
-        GoogleIdToken idToken = verifier.verify(tokenStr);
-
-        if (idToken == null) {
-
-          throw new GeneralStatusCodeErrorException(
-              new ErrorMessage(
-                  "Invalid Google ID Token",
-                  "Google Login Failed",
-                  HttpStatus.UNAUTHORIZED,
-                  HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
-                  ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                  new java.util.Date().toString(),
-                  null));
-        }
-
-        // Extract user details from token payload
-        GoogleIdToken.Payload payload = idToken.getPayload();
-
-        email = payload.getEmail();
-        name = (String) payload.get("name");
-
-        // Use given name if name is unavailable
-        if (name == null || name.trim().isEmpty()) {
-          name = (String) payload.get("given_name");
-        }
-
-      } else {
-
-        // Retrieve user information using Google access token
-        HttpRequest request =
-            HttpRequest.newBuilder()
-                .uri(URI.create("https://www.googleapis.com/oauth2/v3/userinfo"))
-                .header("Authorization", "Bearer " + tokenStr)
-                .header("Accept", "application/json")
-                .GET()
-                .build();
-
-        HttpResponse<String> response =
-            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // Convert response body into map
-        Map<String, Object> userInfo = objectMapper.readValue(response.body(), Map.class);
-
-        email = (String) userInfo.get("email");
-        name = (String) userInfo.get("name");
-      }
-
-      // Validate email received from Googl
-      if (email == null) {
-
-        throw new GeneralStatusCodeErrorException(
-            new ErrorMessage(
-                "Google user email is null",
-                "Google Login Failed",
-                HttpStatus.BAD_REQUEST,
-                HttpStatusCodeEnum.BAD_REQUEST.getValue(),
-                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                new java.util.Date().toString(),
-                null));
-      }
-
-      // Use email prefix as default name if name is unavailable
-      if (name == null) {
-        name = email.split("@")[0];
-      }
-
-      // Retrieve existing user or create a new OAuth user
-      User user = getOrCreateOAuthUser(correlationId, logKey, email, name);
-
-      // Generate JWT token
-      UserRole role = UserRole.fromValue(user.getRoleId());
-
-      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
-
-      return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
-
-    } catch (GeneralStatusCodeErrorException e) {
-
-      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
-
-      throw e;
-
-    } catch (Exception e) {
-
-      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
-
-      throw new GeneralStatusCodeErrorException(new ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
-    }
-  }
-
-  /**
-   * Login With GitHub
-   *
-   * @param correlationId String
-   * @param logKey String
-   * @param code String
-   * @return LoginResponse
-   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
-   */
-  @Override
-  public LoginResponse loginWithGithub(String correlationId, String logKey, String code)
-      throws GeneralStatusCodeErrorException {
-
-    try {
-
-      ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
-
-      // Create request body to exchange authorization code for access token
-      Map<String, String> tokenRequest =
-          Map.of(
-              "client_id", oauthConfig.getGithub().getClientId(),
-              "client_secret", oauthConfig.getGithub().getClientSecret(),
-              "code", code);
-
-      String requestBody = objectMapper.writeValueAsString(tokenRequest);
-
-      // Send request to GitHub OAuth token endpoint
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create("https://github.com/login/oauth/access_token"))
-              .header("Content-Type", "application/json")
-              .header("Accept", "application/json")
-              .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-              .build();
-
-      HttpResponse<String> response =
-          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-      // Parse access token response
-      Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
-
-      String accessToken = (String) tokenResponse.get("access_token");
-
-      // Validate access token
-      if (accessToken == null) {
-
-        throw new GeneralStatusCodeErrorException(
-            new ErrorMessage(
-                "GitHub access token not found",
-                "GitHub Login Failed",
-                HttpStatus.UNAUTHORIZED,
-                HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
-                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                new java.util.Date().toString(),
-                null));
-      }
-
-      // Retrieve GitHub user profile
-      HttpRequest userRequest =
-          HttpRequest.newBuilder()
-              .uri(URI.create("https://api.github.com/user"))
-              .header("Authorization", "Bearer " + accessToken)
-              .header("Accept", "application/json")
-              .GET()
-              .build();
-
-      // Parse GitHub profile response
-      HttpResponse<String> userResponse =
-          httpClient.send(userRequest, HttpResponse.BodyHandlers.ofString());
-
-      Map<String, Object> githubUser = objectMapper.readValue(userResponse.body(), Map.class);
-
-      String email = (String) githubUser.get("email");
-
-      String name = (String) githubUser.get("name");
-
-      // Use GitHub username if display name is unavailable
-      if (name == null || name.trim().isEmpty()) {
-        name = (String) githubUser.get("login");
-      }
-
-      // Validate email address
-      if (email == null || email.trim().isEmpty()) {
-
-        throw new GeneralStatusCodeErrorException(
-            new ErrorMessage(
-                "GitHub email not found",
-                "GitHub Login Failed",
-                HttpStatus.BAD_REQUEST,
-                HttpStatusCodeEnum.BAD_REQUEST.getValue(),
-                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                new java.util.Date().toString(),
-                null));
-      }
-
-      User user = getOrCreateOAuthUser(correlationId, logKey, email, name);
-
-      UserRole role = UserRole.fromValue(user.getRoleId());
-
-      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
-
-      return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
-
-    } catch (GeneralStatusCodeErrorException e) {
-
-      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
-
-      throw e;
-
-    } catch (Exception e) {
-
-      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
-
-      throw new GeneralStatusCodeErrorException(new ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
-    }
-  }
-
-  /**
-   * Get Or Create OAuth User
-   *
-   * @param correlationId String
-   * @param logKey String
-   * @param email String
-   * @param name String
-   * @return User
-   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
-   */
-  private User getOrCreateOAuthUser(String correlationId, String logKey, String email, String name)
-      throws GeneralStatusCodeErrorException {
-    try {
-      return userRepository
-          .findByEmail(correlationId, logKey, email)
-          .orElseGet(
-              () -> {
-                User newUser =
-                    User.builder()
-                        .fullName(name)
-                        .email(email)
-                        .password(null)
-                        .roleId(UserRole.USER.getValue())
-                        .createdAt(Timestamp.valueOf(LocalDateTime.now()))
-                        .build();
-                long id = 0;
-                try {
-                  id = userRepository.save(correlationId, logKey, newUser);
-                  // Set user_id and created_by to the user's own numeric ID after insert
-                  newUser.setId(id);
-                  newUser.setUserId(id);
-                  newUser.setCreatedBy(String.valueOf(id));
-                  userRepository.update(correlationId, logKey, newUser);
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-                return newUser;
-              });
-    } catch (Exception e) {
-      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
-      throw new GeneralStatusCodeErrorException(new ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
-    }
-  }
+  //  /**
+  //   * Login With Google
+  //   *
+  //   * @param correlationId String
+  //   * @param logKey String
+  //   * @param tokenStr String
+  //   * @return LoginResponse
+  //   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+  //   */
+  //  @Override
+  //  public LoginResponse loginWithGoogle(String correlationId, String logKey, String tokenStr)
+  //      throws GeneralStatusCodeErrorException {
+  //
+  //    try {
+  //
+  //      ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
+  //
+  //      String email = null;
+  //      String name = null;
+  //
+  //      // Determine whether the token is an ID token or an access token
+  //      if (tokenStr.startsWith("ey")) {
+  //
+  //        // Verify Google ID token using Google API
+  //        GoogleIdTokenVerifier verifier =
+  //            new GoogleIdTokenVerifier.Builder(
+  //                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
+  //                .setAudience(Collections.singletonList(oauthConfig.getGoogle().getClientId()))
+  //                .build();
+  //
+  //        GoogleIdToken idToken = verifier.verify(tokenStr);
+  //
+  //        if (idToken == null) {
+  //
+  //          throw new GeneralStatusCodeErrorException(
+  //              new ErrorMessage(
+  //                  "Invalid Google ID Token",
+  //                  "Google Login Failed",
+  //                  HttpStatus.UNAUTHORIZED,
+  //                  HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
+  //                  ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                  new java.util.Date().toString(),
+  //                  null));
+  //        }
+  //
+  //        // Extract user details from token payload
+  //        GoogleIdToken.Payload payload = idToken.getPayload();
+  //
+  //        email = payload.getEmail();
+  //        name = (String) payload.get("name");
+  //
+  //        // Use given name if name is unavailable
+  //        if (name == null || name.trim().isEmpty()) {
+  //          name = (String) payload.get("given_name");
+  //        }
+  //
+  //      } else {
+  //
+  //        // Retrieve user information using Google access token
+  //        HttpRequest request =
+  //            HttpRequest.newBuilder()
+  //                .uri(URI.create("https://www.googleapis.com/oauth2/v3/userinfo"))
+  //                .header("Authorization", "Bearer " + tokenStr)
+  //                .header("Accept", "application/json")
+  //                .GET()
+  //                .build();
+  //
+  //        HttpResponse<String> response =
+  //            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+  //
+  //        // Convert response body into map
+  //        Map<String, Object> userInfo = objectMapper.readValue(response.body(), Map.class);
+  //
+  //        email = (String) userInfo.get("email");
+  //        name = (String) userInfo.get("name");
+  //      }
+  //
+  //      // Validate email received from Googl
+  //      if (email == null) {
+  //
+  //        throw new GeneralStatusCodeErrorException(
+  //            new ErrorMessage(
+  //                "Google user email is null",
+  //                "Google Login Failed",
+  //                HttpStatus.BAD_REQUEST,
+  //                HttpStatusCodeEnum.BAD_REQUEST.getValue(),
+  //                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                new java.util.Date().toString(),
+  //                null));
+  //      }
+  //
+  //      // Use email prefix as default name if name is unavailable
+  //      if (name == null) {
+  //        name = email.split("@")[0];
+  //      }
+  //
+  //      // Retrieve existing user or create a new OAuth user
+  //      User user = getOrCreateOAuthUser(correlationId, logKey, email, name);
+  //
+  //      // Generate JWT token
+  //      UserRole role = UserRole.fromValue(user.getRoleId());
+  //
+  //      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
+  //
+  //      return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
+  //
+  //    } catch (GeneralStatusCodeErrorException e) {
+  //
+  //      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+  //
+  //      throw e;
+  //
+  //    } catch (Exception e) {
+  //
+  //      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+  //
+  //      throw new GeneralStatusCodeErrorException(new
+  // ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
+  //    }
+  //  }
+  //
+  //  /**
+  //   * Login With GitHub
+  //   *
+  //   * @param correlationId String
+  //   * @param logKey String
+  //   * @param code String
+  //   * @return LoginResponse
+  //   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+  //   */
+  //  @Override
+  //  public LoginResponse loginWithGithub(String correlationId, String logKey, String code)
+  //      throws GeneralStatusCodeErrorException {
+  //
+  //    try {
+  //
+  //      ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
+  //
+  //      // Create request body to exchange authorization code for access token
+  //      Map<String, String> tokenRequest =
+  //          Map.of(
+  //              "client_id", oauthConfig.getGithub().getClientId(),
+  //              "client_secret", oauthConfig.getGithub().getClientSecret(),
+  //              "code", code);
+  //
+  //      String requestBody = objectMapper.writeValueAsString(tokenRequest);
+  //
+  //      // Send request to GitHub OAuth token endpoint
+  //      HttpRequest request =
+  //          HttpRequest.newBuilder()
+  //              .uri(URI.create("https://github.com/login/oauth/access_token"))
+  //              .header("Content-Type", "application/json")
+  //              .header("Accept", "application/json")
+  //              .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+  //              .build();
+  //
+  //      HttpResponse<String> response =
+  //          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+  //
+  //      // Parse access token response
+  //      Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
+  //
+  //      String accessToken = (String) tokenResponse.get("access_token");
+  //
+  //      // Validate access token
+  //      if (accessToken == null) {
+  //
+  //        throw new GeneralStatusCodeErrorException(
+  //            new ErrorMessage(
+  //                "GitHub access token not found",
+  //                "GitHub Login Failed",
+  //                HttpStatus.UNAUTHORIZED,
+  //                HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
+  //                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                new java.util.Date().toString(),
+  //                null));
+  //      }
+  //
+  //      // Retrieve GitHub user profile
+  //      HttpRequest userRequest =
+  //          HttpRequest.newBuilder()
+  //              .uri(URI.create("https://api.github.com/user"))
+  //              .header("Authorization", "Bearer " + accessToken)
+  //              .header("Accept", "application/json")
+  //              .GET()
+  //              .build();
+  //
+  //      // Parse GitHub profile response
+  //      HttpResponse<String> userResponse =
+  //          httpClient.send(userRequest, HttpResponse.BodyHandlers.ofString());
+  //
+  //      Map<String, Object> githubUser = objectMapper.readValue(userResponse.body(), Map.class);
+  //
+  //      String email = (String) githubUser.get("email");
+  //
+  //      String name = (String) githubUser.get("name");
+  //
+  //      // Use GitHub username if display name is unavailable
+  //      if (name == null || name.trim().isEmpty()) {
+  //        name = (String) githubUser.get("login");
+  //      }
+  //
+  //      // Validate email address
+  //      if (email == null || email.trim().isEmpty()) {
+  //
+  //        throw new GeneralStatusCodeErrorException(
+  //            new ErrorMessage(
+  //                "GitHub email not found",
+  //                "GitHub Login Failed",
+  //                HttpStatus.BAD_REQUEST,
+  //                HttpStatusCodeEnum.BAD_REQUEST.getValue(),
+  //                ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                new java.util.Date().toString(),
+  //                null));
+  //      }
+  //
+  //      User user = getOrCreateOAuthUser(correlationId, logKey, email, name);
+  //
+  //      UserRole role = UserRole.fromValue(user.getRoleId());
+  //
+  //      String token = jwtUtil.generateToken(user.getEmail(), role.name(), user.getId());
+  //
+  //      return LoginResponse.builder().token(token).email(user.getEmail()).role(role).build();
+  //
+  //    } catch (GeneralStatusCodeErrorException e) {
+  //
+  //      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+  //
+  //      throw e;
+  //
+  //    } catch (Exception e) {
+  //
+  //      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+  //
+  //      throw new GeneralStatusCodeErrorException(new
+  // ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
+  //    }
+  //  }
+  //
+  //  /**
+  //   * Get Or Create OAuth User
+  //   *
+  //   * @param correlationId String
+  //   * @param logKey String
+  //   * @param email String
+  //   * @param name String
+  //   * @return User
+  //   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+  //   */
+  //  private User getOrCreateOAuthUser(String correlationId, String logKey, String email, String
+  // name)
+  //      throws GeneralStatusCodeErrorException {
+  //    try {
+  //      return userRepository
+  //          .findByEmail(correlationId, logKey, email)
+  //          .orElseGet(
+  //              () -> {
+  //                User newUser =
+  //                    User.builder()
+  //                        .fullName(name)
+  //                        .email(email)
+  //                        .password(null)
+  //                        .roleId(UserRole.USER.getValue())
+  //                        .createdAt(Timestamp.valueOf(LocalDateTime.now()))
+  //                        .build();
+  //                long id = 0;
+  //                try {
+  //                  id = userRepository.save(correlationId, logKey, newUser);
+  //                  // Set user_id and created_by to the user's own numeric ID after insert
+  //                  newUser.setId(id);
+  //                  newUser.setUserId(id);
+  //                  newUser.setCreatedBy(String.valueOf(id));
+  //                  userRepository.update(correlationId, logKey, newUser);
+  //                } catch (Exception e) {
+  //                  throw new RuntimeException(e);
+  //                }
+  //                return newUser;
+  //              });
+  //    } catch (Exception e) {
+  //      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+  //      throw new GeneralStatusCodeErrorException(new
+  // ErrorMessage(ApiError.INTERNAL_SERVER_ERROR));
+  //    }
+  //  }
 }

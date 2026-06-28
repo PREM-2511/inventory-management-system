@@ -211,7 +211,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("findById executes RowMapper and maps all fields")
   void findById_CoversRowMapper() throws Exception {
-
     // Arrange
     when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
         .thenAnswer(
@@ -278,7 +277,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("save returns 0 when KeyHolder key is null")
   void save_ReturnsZero_WhenKeyHolderIsNull() throws Exception {
-
     // Arrange
     when(jdbcTemplate.update(
             anyString(), any(MapSqlParameterSource.class), any(), any(String[].class)))
@@ -298,7 +296,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("markAllRead updates all unread notifications")
   void markAllRead_Success() throws Exception {
-
     // Arrange
     when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(3);
 
@@ -319,7 +316,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("countOldNotifications returns count")
   void countOldNotifications_Success() throws Exception {
-
     // Arrange
     when(jdbcTemplate.queryForObject(
             anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
@@ -340,7 +336,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("deleteOldNotificationsBatch deletes records in batch")
   void deleteOldNotificationsBatch_Success() throws Exception {
-
     // Arrange
     when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(2);
 
@@ -360,7 +355,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("save covers isRead TRUE branch")
   void save_IsReadTrue() throws Exception {
-
     // Arrange
     notification.setIsRead(true);
 
@@ -383,7 +377,6 @@ class NotificationRepositoryTest {
   @Test
   @DisplayName("save covers isRead FALSE branch")
   void save_IsReadFalse() throws Exception {
-
     // Arrange
     notification.setIsRead(false);
 
@@ -401,5 +394,77 @@ class NotificationRepositoryTest {
       verify(jdbcTemplate)
           .update(anyString(), any(MapSqlParameterSource.class), any(), any(String[].class));
     }
+  }
+
+  @Test
+  @DisplayName("checkLowStockNotificationExists returns true when notification exists")
+  void checkLowStockNotificationExists_ReturnsTrue() throws Exception {
+    // Arrange
+    when(jdbcTemplate.queryForObject(
+            anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
+        .thenReturn(1);
+
+    // Act
+    boolean result =
+        notificationRepository.checkLowStockNotificationExists(
+            X_CORRELATION_ID, LOG_KEY, 10L, "Laptop");
+
+    // Assert
+    assertTrue(result);
+
+    // Verify
+    verify(jdbcTemplate, times(1))
+        .queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Integer.class));
+  }
+
+  @Test
+  @DisplayName("checkLowStockNotificationExists returns false when notification does not exist")
+  void checkLowStockNotificationExists_ReturnsFalse_WhenCountZero() throws Exception {
+    // Arrange
+    when(jdbcTemplate.queryForObject(
+            anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
+        .thenReturn(0);
+
+    // Act
+    boolean result =
+        notificationRepository.checkLowStockNotificationExists(
+            X_CORRELATION_ID, LOG_KEY, 10L, "Laptop");
+
+    // Assert
+    assertFalse(result);
+
+    // Verify
+    verify(jdbcTemplate, times(1))
+        .queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Integer.class));
+  }
+
+  @Test
+  @DisplayName("saveLowStockNotification saves notification with isRead TRUE")
+  void saveLowStockNotification_IsReadTrue() throws Exception {
+    // Arrange
+    notification.setIsRead(true);
+
+    when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+
+    // Act
+    notificationRepository.saveLowStockNotification(X_CORRELATION_ID, LOG_KEY, notification);
+
+    // Assert
+    verify(jdbcTemplate, times(1)).update(anyString(), any(MapSqlParameterSource.class));
+  }
+
+  @Test
+  @DisplayName("saveLowStockNotification saves notification with isRead FALSE")
+  void saveLowStockNotification_IsReadFalse() throws Exception {
+    // Arrange
+    notification.setIsRead(false);
+
+    when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+
+    // Act
+    notificationRepository.saveLowStockNotification(X_CORRELATION_ID, LOG_KEY, notification);
+
+    // Assert
+    verify(jdbcTemplate, times(1)).update(anyString(), any(MapSqlParameterSource.class));
   }
 }

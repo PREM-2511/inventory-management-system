@@ -293,4 +293,26 @@ class ProductRepositoryTest {
           .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
     }
   }
+
+  @Test
+  @DisplayName("getAllLowStockProducts returns all low stock products")
+  void getAllLowStockProducts_ReturnsData() {
+    // Arrange
+    ProductDto dto = new ProductDto();
+
+    when(jdbcTemplate.query(
+            anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class)))
+        .thenReturn(List.of(dto));
+
+    // Act
+    List<ProductDto> result = productRepository.getAllLowStockProducts(X_CORRELATION_ID, LOG_KEY);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.size());
+
+    // Verify
+    verify(jdbcTemplate, times(1))
+        .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
+  }
 }

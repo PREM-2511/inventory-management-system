@@ -241,6 +241,28 @@ class NotificationServiceTest {
   }
 
   @Test
+  @DisplayName("find all notifications rethrows GeneralStatusCodeErrorException")
+  void findAll_GeneralStatusCodeErrorException() throws Exception {
+    // Arrange
+    GeneralStatusCodeErrorException exception = mock(GeneralStatusCodeErrorException.class);
+
+    when(exception.getMessage()).thenReturn("Notification Error");
+
+    when(notificationRepository.findAll(anyString(), anyString(), anyInt(), anyInt()))
+        .thenThrow(exception);
+
+    // Act & Assert
+    assertThrows(
+        GeneralStatusCodeErrorException.class,
+        () -> notificationService.findAll(CORRELATION_ID, LOG_KEY, 0, 10));
+
+    // Verify
+    verify(notificationRepository).findAll(anyString(), anyString(), anyInt(), anyInt());
+
+    verify(exception).getMessage();
+  }
+
+  @Test
   @DisplayName("count unread notifications success")
   void countUnread_ReturnsSuccess() throws Exception {
     // Arrange
@@ -270,6 +292,27 @@ class NotificationServiceTest {
 
     // Verify
     verify(notificationRepository, times(1)).countUnread(anyString(), anyString());
+  }
+
+  @Test
+  @DisplayName("count unread notifications rethrows GeneralStatusCodeErrorException")
+  void countUnread_GeneralStatusCodeErrorException() throws Exception {
+    // Arrange
+    GeneralStatusCodeErrorException exception = mock(GeneralStatusCodeErrorException.class);
+
+    when(exception.getMessage()).thenReturn("Notification Error");
+
+    when(notificationRepository.countUnread(anyString(), anyString())).thenThrow(exception);
+
+    // Act & Assert
+    assertThrows(
+        GeneralStatusCodeErrorException.class,
+        () -> notificationService.countUnread(CORRELATION_ID, LOG_KEY));
+
+    // Verify
+    verify(notificationRepository).countUnread(anyString(), anyString());
+
+    verify(exception).getMessage();
   }
 
   @Test
@@ -353,6 +396,27 @@ class NotificationServiceTest {
 
     // Verify
     verify(notificationRepository, times(1)).markAllRead(anyString(), anyString());
+  }
+
+  @Test
+  @DisplayName("mark all notifications read rethrows GeneralStatusCodeErrorException")
+  void markAllRead_GeneralStatusCodeErrorException() throws Exception {
+    // Arrange
+    GeneralStatusCodeErrorException exception = mock(GeneralStatusCodeErrorException.class);
+
+    when(exception.getMessage()).thenReturn("Notification Error");
+
+    doThrow(exception).when(notificationRepository).markAllRead(anyString(), anyString());
+
+    // Act & Assert
+    assertThrows(
+        GeneralStatusCodeErrorException.class,
+        () -> notificationService.markAllRead(CORRELATION_ID, LOG_KEY));
+
+    // Verify
+    verify(notificationRepository).markAllRead(anyString(), anyString());
+
+    verify(exception).getMessage();
   }
 
   @Test
@@ -474,5 +538,79 @@ class NotificationServiceTest {
     // Verify
     verify(notificationRepository, times(1))
         .deleteOldNotificationsBatch(anyString(), anyString(), anyString(), anyInt());
+  }
+
+  @Test
+  @DisplayName("checkAndCreateLowStockNotification does nothing when notification already exists")
+  void checkAndCreateLowStockNotification_AlreadyExists() throws Exception {
+    // Arrange
+    when(notificationRepository.checkLowStockNotificationExists(
+            anyString(), anyString(), anyLong(), anyString()))
+        .thenReturn(true);
+
+    // Act
+    assertDoesNotThrow(
+        () ->
+            notificationService.checkAndCreateLowStockNotification(
+                CORRELATION_ID, LOG_KEY, 1L, "Laptop", 5, 10));
+
+    // Verify
+    verify(notificationRepository, times(1))
+        .checkLowStockNotificationExists(anyString(), anyString(), anyLong(), anyString());
+
+    verify(notificationRepository, never())
+        .saveLowStockNotification(anyString(), anyString(), any(Notification.class));
+  }
+
+  @Test
+  @DisplayName("checkAndCreateLowStockNotification creates notification when none exists")
+  void checkAndCreateLowStockNotification_CreateNotification() throws Exception {
+    // Arrange
+    when(notificationRepository.checkLowStockNotificationExists(
+            anyString(), anyString(), anyLong(), anyString()))
+        .thenReturn(false);
+
+    doNothing()
+        .when(notificationRepository)
+        .saveLowStockNotification(anyString(), anyString(), any(Notification.class));
+
+    // Act
+    assertDoesNotThrow(
+        () ->
+            notificationService.checkAndCreateLowStockNotification(
+                CORRELATION_ID, LOG_KEY, 1L, "Laptop", 5, 10));
+
+    // Verify
+    verify(notificationRepository)
+        .checkLowStockNotificationExists(anyString(), anyString(), anyLong(), anyString());
+
+    verify(notificationRepository)
+        .saveLowStockNotification(anyString(), anyString(), any(Notification.class));
+  }
+
+  @Test
+  @DisplayName("checkAndCreateLowStockNotification throws exception when repository fails")
+  void checkAndCreateLowStockNotification_Exception() throws Exception {
+    // Arrange
+    when(notificationRepository.checkLowStockNotificationExists(
+            anyString(), anyString(), anyLong(), anyString()))
+        .thenThrow(new RuntimeException("DB Error"));
+
+    // Act & Assert
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                notificationService.checkAndCreateLowStockNotification(
+                    CORRELATION_ID, LOG_KEY, 1L, "Laptop", 5, 10));
+
+    assertEquals("DB Error", exception.getMessage());
+
+    // Verify
+    verify(notificationRepository)
+        .checkLowStockNotificationExists(anyString(), anyString(), anyLong(), anyString());
+
+    verify(notificationRepository, never())
+        .saveLowStockNotification(anyString(), anyString(), any(Notification.class));
   }
 }

@@ -44,12 +44,15 @@ class DashboardServiceTest {
 
     product1 = new ProductDto();
     product1.setCategory("Electronics");
+    product1.setQty(100);
 
     product2 = new ProductDto();
     product2.setCategory("Electronics");
+    product2.setQty(50);
 
     product3 = new ProductDto();
     product3.setCategory("Furniture");
+    product3.setQty(30);
   }
 
   @Test
@@ -122,6 +125,7 @@ class DashboardServiceTest {
     assertNotNull(electronics);
     assertEquals(2L, electronics.getCount());
     assertEquals(67, electronics.getPercentage());
+    assertEquals(150L, electronics.getTotalStock());
 
     DashboardCategoryDto furniture =
         result.stream().filter(c -> c.getName().equals("Furniture")).findFirst().orElse(null);
@@ -129,6 +133,7 @@ class DashboardServiceTest {
     assertNotNull(furniture);
     assertEquals(1L, furniture.getCount());
     assertEquals(33, furniture.getPercentage());
+    assertEquals(30L, furniture.getTotalStock());
 
     // Verify
     verify(productService, times(1)).getAllProducts(anyString(), anyString());
@@ -140,6 +145,7 @@ class DashboardServiceTest {
     // Arrange
     ProductDto unknown = new ProductDto();
     unknown.setCategory(null);
+    unknown.setQty(10);
 
     when(productService.getAllProducts(anyString(), anyString())).thenReturn(List.of(unknown));
 
@@ -153,6 +159,7 @@ class DashboardServiceTest {
     assertEquals("Unknown", result.get(0).getName());
     assertEquals(1L, result.get(0).getCount());
     assertEquals(100, result.get(0).getPercentage());
+    assertEquals(10L, result.get(0).getTotalStock());
 
     // Verify
     verify(productService, times(1)).getAllProducts(anyString(), anyString());

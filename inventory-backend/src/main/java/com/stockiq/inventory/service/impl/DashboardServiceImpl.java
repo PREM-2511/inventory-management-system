@@ -117,6 +117,14 @@ public class DashboardServiceImpl implements DashboardService {
                       p -> p.getCategory() != null ? p.getCategory() : "Unknown",
                       Collectors.counting()));
 
+      // Group products by category and sum up quantities
+      Map<String, Integer> groupedStock =
+          allProducts.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      p -> p.getCategory() != null ? p.getCategory() : "Unknown",
+                      Collectors.summingInt(p -> p.getQty() != null ? p.getQty() : 0)));
+
       List<DashboardCategoryDto> result = new ArrayList<>();
 
       // Convert grouped data into response DTO
@@ -130,6 +138,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .name(entry.getKey())
                 .count(entry.getValue())
                 .percentage(percentage)
+                .totalStock(groupedStock.getOrDefault(entry.getKey(), 0))
                 .build());
       }
 
