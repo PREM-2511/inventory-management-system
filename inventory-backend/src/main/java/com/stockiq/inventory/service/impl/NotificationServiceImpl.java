@@ -469,6 +469,67 @@ public class NotificationServiceImpl implements NotificationService {
     }
   }
 
+  /**
+   * Check if an unread low-stock notification already exists and create one if not.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param userId long
+   * @param productName String
+   * @param qty int
+   * @param reorderPoint int
+   * @throws Exception if an error occurs during the operation
+   */
+  @Override
+  public void checkAndCreateLowStockNotification(
+      String correlationId,
+      String logKey,
+      long userId,
+      String productName,
+      int qty,
+      int reorderPoint)
+      throws Exception {
+
+    ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
+
+    try {
+
+      boolean exists =
+          notificationRepository.checkLowStockNotificationExists(
+              correlationId, logKey, userId, productName);
+
+      if (!exists) {
+
+        String message =
+            "Product '"
+                + productName
+                + "' has reached low stock level ("
+                + qty
+                + "/"
+                + reorderPoint
+                + "). Please reorder soon!";
+
+        Notification notification =
+            Notification.builder()
+                .userId(userId)
+                .title("Low Stock Warning")
+                .message(message)
+                .type(NotificationType.WARNING.name())
+                .isRead(false)
+                .createdAt(Timestamp.valueOf(LocalDateTime.now()))
+                .build();
+
+        notificationRepository.saveLowStockNotification(correlationId, logKey, notification);
+      }
+
+    } catch (Exception e) {
+
+      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+
+      throw e;
+    }
+  }
+
   private Notification toEntity(NotificationDto dto) {
 
     return Notification.builder()

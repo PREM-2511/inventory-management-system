@@ -100,4 +100,14 @@ public interface ProductRepository {
    * @throws Exception if an error occurs during the operation
    */
   List<ProductDto> getLowStockAlerts(String correlationId, String logKey) throws Exception;
+
+  /**
+   * Get all low stock products across all users (no SecurityContext — for background jobs only).
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @return List<ProductDto>
+   * @throws Exception if an error occurs during the operation
+   */
+  List<ProductDto> getAllLowStockProducts(String correlationId, String logKey) throws Exception;
 }

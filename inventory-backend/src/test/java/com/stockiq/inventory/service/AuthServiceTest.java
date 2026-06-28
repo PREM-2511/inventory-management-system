@@ -1,6 +1,8 @@
 package com.stockiq.inventory.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.stockiq.inventory.common.enums.user.UserRole;
 import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.common.response.user.CreateUserResponse;
@@ -15,12 +17,16 @@ import com.stockiq.inventory.dto.UserDto;
 import com.stockiq.inventory.entity.User;
 import com.stockiq.inventory.repository.UserRepository;
 import com.stockiq.inventory.service.impl.AuthServiceImpl;
+import java.net.http.HttpResponse;
+import java.util.Map;
+import org.apache.http.client.HttpClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,6 +49,7 @@ class AuthServiceTest {
   @Mock private OAuthConfig oauthConfig;
   @Mock private ObjectMapper objectMapper;
   @Mock private java.net.http.HttpClient httpClient;
+  @Mock private OAuthConfig.Google googleConfig;
 
   @InjectMocks private AuthServiceImpl authService;
 
@@ -399,4 +406,164 @@ class AuthServiceTest {
 
     verify(passwordEncoder, times(1)).encode(anyString());
   }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGoogle - ID token success")
+  //  void loginWithGoogle_IdToken_Success() throws Exception {
+  //    // Arrange
+  //    String idToken = "eyFakeToken";
+  //
+  //    OAuthConfig.Google googleConfig = mock(OAuthConfig.Google.class);
+  //
+  //    when(oauthConfig.getGoogle()).thenReturn(googleConfig);
+  //    when(googleConfig.getClientId()).thenReturn("test-client-id");
+  //
+  //    GoogleIdToken mockIdToken = mock(GoogleIdToken.class);
+  //    GoogleIdToken.Payload payload = mock(GoogleIdToken.Payload.class);
+  //
+  //    when(payload.getEmail()).thenReturn("test@mail.com");
+  //    when(payload.get("name")).thenReturn("Test User");
+  //    when(mockIdToken.getPayload()).thenReturn(payload);
+  //
+  //    when(userRepository.findByEmail(anyString(), anyString(), anyString()))
+  //        .thenReturn(Optional.empty());
+  //
+  //    when(userRepository.save(anyString(), anyString(), any(User.class)))
+  //        .thenReturn(1L);
+  //
+  //    when(userRepository.update(anyString(), anyString(), any(User.class)))
+  //        .thenReturn(1);
+  //
+  //    when(jwtUtil.generateToken(anyString(), anyString(), anyLong()))
+  //        .thenReturn("jwt-token");
+  //
+  //    try (MockedConstruction<GoogleIdTokenVerifier> mocked =
+  //        mockConstruction(GoogleIdTokenVerifier.class,
+  //            (mock, context) ->
+  //                when(mock.verify(anyString())).thenReturn(mockIdToken))) {
+  //
+  //      // Act
+  //      LoginResponse response =
+  //          authService.loginWithGoogle(CORRELATION_ID, LOG_KEY, idToken);
+  //
+  //      // Assert
+  //      assertNotNull(response);
+  //      assertEquals("jwt-token", response.getToken());
+  //
+  //      // Verify
+  //      verify(jwtUtil, times(1)).generateToken(anyString(), anyString(), anyLong());
+  //      verify(userRepository, times(1)).findByEmail(anyString(), anyString(), anyString());
+  //    }
+  //  }
+
+  //  @Test
+  //  @DisplayName("loginWithGoogle - invalid ID token throws exception")
+  //  void loginWithGoogle_InvalidIdToken_ThrowsException() {
+  //    // Arrange
+  //    String token = "eyInvalidToken";
+  //
+  //    OAuthConfig.Google googleConfig = mock(OAuthConfig.Google.class);
+  //
+  //    when(oauthConfig.getGoogle()).thenReturn(googleConfig);
+  //    when(googleConfig.getClientId()).thenReturn("test-client-id");
+  //
+  //    try (MockedConstruction<GoogleIdTokenVerifier> mocked =
+  //        mockConstruction(GoogleIdTokenVerifier.class,
+  //            (mock, context) ->
+  //                when(mock.verify(anyString())).thenReturn(null))) {
+  //
+  //      // Act & Assert
+  //      assertThrows(
+  //          GeneralStatusCodeErrorException.class,
+  //          () -> authService.loginWithGoogle(CORRELATION_ID, LOG_KEY, token)
+  //      );
+  //    }
+  //
+  //    // Verify
+  //    verify(oauthConfig).getGoogle();
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGoogle - given_name fallback when name is null")
+  //  void loginWithGoogle_NameFallbackToGivenName() throws Exception {
+  //    // Arrange
+  //    String token = "eyFakeToken";
+  //
+  //    OAuthConfig.Google googleConfig = mock(OAuthConfig.Google.class);
+  //    when(oauthConfig.getGoogle()).thenReturn(googleConfig);
+  //    when(googleConfig.getClientId()).thenReturn("test-client-id");
+  //
+  //    GoogleIdToken mockIdToken = mock(GoogleIdToken.class);
+  //    GoogleIdToken.Payload payload = mock(GoogleIdToken.Payload.class);
+  //
+  //    when(payload.getEmail()).thenReturn("test@mail.com");
+  //    when(payload.get("name")).thenReturn(null); // FORCE NULL NAME
+  //    when(payload.get("given_name")).thenReturn("GivenNameUser");
+  //
+  //    when(mockIdToken.getPayload()).thenReturn(payload);
+  //
+  //    when(userRepository.findByEmail(anyString(), anyString(), anyString()))
+  //        .thenReturn(Optional.empty());
+  //
+  //    when(userRepository.save(anyString(), anyString(), any(User.class)))
+  //        .thenReturn(1L);
+  //
+  //    when(jwtUtil.generateToken(anyString(), anyString(), anyLong()))
+  //        .thenReturn("jwt-token");
+  //
+  //    try (MockedConstruction<GoogleIdTokenVerifier> mocked =
+  //        mockConstruction(GoogleIdTokenVerifier.class,
+  //            (mock, context) ->
+  //                when(mock.verify(anyString())).thenReturn(mockIdToken))) {
+  //
+  //      // Act
+  //      LoginResponse response =
+  //          authService.loginWithGoogle(CORRELATION_ID, LOG_KEY, token);
+  //
+  //      // Assert
+  //      assertNotNull(response);
+  //      assertEquals("jwt-token", response.getToken());
+  //    }
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGoogle - access token branch success")
+  //  void loginWithGoogle_AccessTokenBranch_Success() throws Exception {
+  //    // Arrange
+  //    String token = "access-token-123";
+  //
+  //    OAuthConfig.Google googleConfig = mock(OAuthConfig.Google.class);
+  //    when(oauthConfig.getGoogle()).thenReturn(googleConfig);
+  //
+  //    HttpResponse<String> httpResponse = mock(HttpResponse.class);
+  //    when(httpResponse.body()).thenReturn("{\"email\":\"test@mail.com\",\"name\":\"Test
+  // User\"}");
+  //
+  //    doReturn(httpResponse)
+  //        .when(httpClient)
+  //        .send(any(), any());
+  //
+  //    when(objectMapper.readValue(anyString(), eq(Map.class)))
+  //        .thenReturn(Map.of("email", "test@mail.com", "name", "Test User"));
+  //
+  //    when(userRepository.findByEmail(anyString(), anyString(), anyString()))
+  //        .thenReturn(Optional.empty());
+  //
+  //    when(userRepository.save(anyString(), anyString(), any(User.class)))
+  //        .thenReturn(1L);
+  //
+  //    when(jwtUtil.generateToken(anyString(), anyString(), anyLong()))
+  //        .thenReturn("jwt-token");
+  //
+  //    // Act
+  //    LoginResponse response =
+  //        authService.loginWithGoogle(CORRELATION_ID, LOG_KEY, token);
+  //
+  //    // Assert
+  //    assertNotNull(response);
+  //    assertEquals("jwt-token", response.getToken());
+  //
+  //    // Verify
+  //    verify(httpClient, times(1)).send(any(), any());
+  //  }
 }

@@ -345,4 +345,89 @@ public class NotificationRepositoryImpl implements NotificationRepository {
 
     return jdbcTemplate.update(sql, params);
   }
+
+  /**
+   * Check if an unread low-stock notification already exists for a given user and product name.
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param userId long
+   * @param productName String
+   * @return boolean
+   * @throws Exception if an error occurs during the operation
+   */
+  @Override
+  public boolean checkLowStockNotificationExists(
+      String correlationId, String logKey, long userId, String productName) throws Exception {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql =
+        """
+        SELECT COUNT(id)
+        FROM notifications
+        WHERE user_id = :userId
+          AND title = 'Low Stock Warning'
+          AND message LIKE :messagePattern
+          AND is_read = 0
+        """;
+
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("userId", userId)
+            .addValue("messagePattern", "%Product '" + productName + "' has reached low stock%");
+
+    Integer count = jdbcTemplate.queryForObject(sql, params, Integer.class);
+
+    return count != null && count > 0;
+  }
+
+  /**
+   * Save a low-stock notification directly for a specific user (bypasses SecurityContext).
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @param notification Notification
+   * @throws Exception if an error occurs during the operation
+   */
+  @Override
+  public void saveLowStockNotification(
+      String correlationId, String logKey, Notification notification) throws Exception {
+
+    ActivityLog.logInfo(correlationId, logKey, REPO_IMPL, INIT_LOG);
+
+    String sql =
+        """
+        INSERT INTO notifications
+        (
+            user_id,
+            title,
+            message,
+            type,
+            is_read,
+            created_at
+        )
+        VALUES
+        (
+            :userId,
+            :title,
+            :message,
+            :type,
+            :isRead,
+            :createdAt
+        )
+        """;
+
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("userId", notification.getUserId())
+            .addValue("title", notification.getTitle())
+            .addValue("message", notification.getMessage())
+            .addValue("type", notification.getType())
+            .addValue(
+                "isRead", notification.getIsRead() != null && notification.getIsRead() ? 1 : 0)
+            .addValue("createdAt", notification.getCreatedAt());
+
+    jdbcTemplate.update(sql, params);
+  }
 }

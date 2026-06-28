@@ -2,9 +2,7 @@ package com.stockiq.inventory.common.exception;
 
 import com.stockiq.inventory.common.util.ErrorMessage;
 
-/**
- * Exception class to handle custom error messages.
- */
+/** Exception class to handle custom error messages. */
 public class GeneralStatusCodeErrorException extends Exception {
 
   private final ErrorMessage errorMessage;

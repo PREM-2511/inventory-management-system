@@ -73,27 +73,27 @@ public interface AuthService {
   boolean resetPassword(String correlationId, String logKey, ResetPasswordDto resetDto)
       throws GeneralStatusCodeErrorException;
 
-  /**
-   * Login With Google
-   *
-   * @param correlationId String
-   * @param logKey String
-   * @param idToken String
-   * @return LoginResponse
-   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
-   */
-  LoginResponse loginWithGoogle(String correlationId, String logKey, String idToken)
-      throws GeneralStatusCodeErrorException;
-
-  /**
-   * Login With GitHub
-   *
-   * @param correlationId String
-   * @param logKey String
-   * @param code String
-   * @return LoginResponse
-   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
-   */
-  LoginResponse loginWithGithub(String correlationId, String logKey, String code)
-      throws GeneralStatusCodeErrorException;
+  //  /**
+  //   * Login With Google
+  //   *
+  //   * @param correlationId String
+  //   * @param logKey String
+  //   * @param idToken String
+  //   * @return LoginResponse
+  //   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+  //   */
+  //  LoginResponse loginWithGoogle(String correlationId, String logKey, String idToken)
+  //      throws GeneralStatusCodeErrorException;
+  //
+  //  /**
+  //   * Login With GitHub
+  //   *
+  //   * @param correlationId String
+  //   * @param logKey String
+  //   * @param code String
+  //   * @return LoginResponse
+  //   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+  //   */
+  //  LoginResponse loginWithGithub(String correlationId, String logKey, String code)
+  //      throws GeneralStatusCodeErrorException;
 }

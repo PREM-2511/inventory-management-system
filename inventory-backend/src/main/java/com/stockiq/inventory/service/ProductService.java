@@ -77,9 +77,7 @@ public interface ProductService {
    * @return List<ProductDto>
    * @throws GeneralStatusCodeErrorException if an error occurs during the operation
    */
-  List<ProductDto> getLowStockAlerts(
-      String correlationId,
-      String logKey)
+  List<ProductDto> getLowStockAlerts(String correlationId, String logKey)
       throws GeneralStatusCodeErrorException;
 
   /**
@@ -90,8 +88,17 @@ public interface ProductService {
    * @return List<ProductDto>
    * @throws GeneralStatusCodeErrorException if an error occurs during the operation
    */
-  List<ProductDto> getAllProducts(
-      String correlationId,
-      String logKey)
+  List<ProductDto> getAllProducts(String correlationId, String logKey)
+      throws GeneralStatusCodeErrorException;
+
+  /**
+   * Get all low stock products across all users (no SecurityContext — for background jobs only).
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @return List<ProductDto>
+   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+   */
+  List<ProductDto> getAllLowStockProducts(String correlationId, String logKey)
       throws GeneralStatusCodeErrorException;
 }

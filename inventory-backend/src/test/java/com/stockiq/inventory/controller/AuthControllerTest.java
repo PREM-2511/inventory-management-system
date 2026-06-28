@@ -361,136 +361,139 @@ class AuthControllerTest {
     verify(authService).resetPassword(anyString(), anyString(), any(ResetPasswordDto.class));
   }
 
-  @Test
-  @DisplayName("loginWithGoogle Success Using AccessToken")
-  void loginWithGoogle_Success() throws Exception {
-    // Arrange
-    oauthLoginDto.setAccessToken("access-token");
-
-    when(authService.loginWithGoogle(anyString(), anyString(), eq("access-token")))
-        .thenReturn(loginResponse);
-
-    // Act
-    ResponseEntity<?> response = authController.loginWithGoogle(oauthLoginDto, X_CORRELATION_ID);
-
-    // Assert
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody());
-
-    LoginResponse result = (LoginResponse) response.getBody();
-
-    assertEquals("jwt-token", result.getToken());
-    assertEquals("john@test.com", result.getEmail());
-    assertEquals(UserRole.USER, result.getRole());
-
-    // Verify
-    verify(authService).loginWithGoogle(anyString(), anyString(), eq("access-token"));
-  }
-
-  @Test
-  @DisplayName("loginWithGoogle Success Using IdToken")
-  void loginWithGoogle_IdToken() throws Exception {
-    // Arrange
-    oauthLoginDto.setAccessToken(null);
-    oauthLoginDto.setIdToken("id-token");
-
-    when(authService.loginWithGoogle(anyString(), anyString(), eq("id-token")))
-        .thenReturn(loginResponse);
-
-    // Act
-    ResponseEntity<?> response = authController.loginWithGoogle(oauthLoginDto, X_CORRELATION_ID);
-
-    // Assert
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody());
-
-    LoginResponse result = (LoginResponse) response.getBody();
-
-    assertEquals("jwt-token", result.getToken());
-    assertEquals("john@test.com", result.getEmail());
-    assertEquals(UserRole.USER, result.getRole());
-
-    // Verify
-    verify(authService).loginWithGoogle(anyString(), anyString(), eq("id-token"));
-  }
-
-  @Test
-  @DisplayName("loginWithGoogle Service Throws GeneralStatusCodeErrorException")
-  void loginWithGoogle_ServiceThrowsGeneralStatusCodeErrorException() throws Exception {
-    // Arrange
-    oauthLoginDto.setAccessToken("access-token");
-
-    when(authService.loginWithGoogle(anyString(), anyString(), eq("access-token")))
-        .thenThrow(
-            new GeneralStatusCodeErrorException(
-                new ErrorMessage(
-                    "Google Login Failed",
-                    "OAuth Error",
-                    HttpStatus.UNAUTHORIZED,
-                    HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
-                    ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                    new java.util.Date().toString(),
-                    null)));
-
-    // Act & Assert
-    assertThrows(
-        GeneralStatusCodeErrorException.class,
-        () -> authController.loginWithGoogle(oauthLoginDto, X_CORRELATION_ID));
-
-    // Verify
-    verify(authService).loginWithGoogle(anyString(), anyString(), eq("access-token"));
-  }
-
-  @Test
-  @DisplayName("loginWithGithub Success")
-  void loginWithGithub_Success() throws Exception {
-    // Arrange
-    oauthLoginDto.setCode("github-code");
-
-    when(authService.loginWithGithub(anyString(), anyString(), eq("github-code")))
-        .thenReturn(loginResponse);
-
-    // Act
-    ResponseEntity<?> response = authController.loginWithGithub(oauthLoginDto, X_CORRELATION_ID);
-
-    // Assert
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody());
-
-    LoginResponse result = (LoginResponse) response.getBody();
-
-    assertEquals("jwt-token", result.getToken());
-    assertEquals("john@test.com", result.getEmail());
-    assertEquals(UserRole.USER, result.getRole());
-
-    // Verify
-    verify(authService).loginWithGithub(anyString(), anyString(), eq("github-code"));
-  }
-
-  @Test
-  @DisplayName("loginWithGithub Service Throws GeneralStatusCodeErrorException")
-  void loginWithGithub_ServiceThrowsGeneralStatusCodeErrorException() throws Exception {
-    // Arrange
-    oauthLoginDto.setCode("github-code");
-
-    when(authService.loginWithGithub(anyString(), anyString(), eq("github-code")))
-        .thenThrow(
-            new GeneralStatusCodeErrorException(
-                new ErrorMessage(
-                    "Github Login Failed",
-                    "OAuth Error",
-                    HttpStatus.UNAUTHORIZED,
-                    HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
-                    ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
-                    new java.util.Date().toString(),
-                    null)));
-
-    // Act & Assert
-    assertThrows(
-        GeneralStatusCodeErrorException.class,
-        () -> authController.loginWithGithub(oauthLoginDto, X_CORRELATION_ID));
-
-    // Verify
-    verify(authService).loginWithGithub(anyString(), anyString(), eq("github-code"));
-  }
+  //  @Test
+  //  @DisplayName("loginWithGoogle Success Using AccessToken")
+  //  void loginWithGoogle_Success() throws Exception {
+  //    // Arrange
+  //    oauthLoginDto.setAccessToken("access-token");
+  //
+  //    when(authService.loginWithGoogle(anyString(), anyString(), eq("access-token")))
+  //        .thenReturn(loginResponse);
+  //
+  //    // Act
+  //    ResponseEntity<?> response = authController.loginWithGoogle(oauthLoginDto,
+  // X_CORRELATION_ID);
+  //
+  //    // Assert
+  //    assertEquals(HttpStatus.OK, response.getStatusCode());
+  //    assertNotNull(response.getBody());
+  //
+  //    LoginResponse result = (LoginResponse) response.getBody();
+  //
+  //    assertEquals("jwt-token", result.getToken());
+  //    assertEquals("john@test.com", result.getEmail());
+  //    assertEquals(UserRole.USER, result.getRole());
+  //
+  //    // Verify
+  //    verify(authService).loginWithGoogle(anyString(), anyString(), eq("access-token"));
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGoogle Success Using IdToken")
+  //  void loginWithGoogle_IdToken() throws Exception {
+  //    // Arrange
+  //    oauthLoginDto.setAccessToken(null);
+  //    oauthLoginDto.setIdToken("id-token");
+  //
+  //    when(authService.loginWithGoogle(anyString(), anyString(), eq("id-token")))
+  //        .thenReturn(loginResponse);
+  //
+  //    // Act
+  //    ResponseEntity<?> response = authController.loginWithGoogle(oauthLoginDto,
+  // X_CORRELATION_ID);
+  //
+  //    // Assert
+  //    assertEquals(HttpStatus.OK, response.getStatusCode());
+  //    assertNotNull(response.getBody());
+  //
+  //    LoginResponse result = (LoginResponse) response.getBody();
+  //
+  //    assertEquals("jwt-token", result.getToken());
+  //    assertEquals("john@test.com", result.getEmail());
+  //    assertEquals(UserRole.USER, result.getRole());
+  //
+  //    // Verify
+  //    verify(authService).loginWithGoogle(anyString(), anyString(), eq("id-token"));
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGoogle Service Throws GeneralStatusCodeErrorException")
+  //  void loginWithGoogle_ServiceThrowsGeneralStatusCodeErrorException() throws Exception {
+  //    // Arrange
+  //    oauthLoginDto.setAccessToken("access-token");
+  //
+  //    when(authService.loginWithGoogle(anyString(), anyString(), eq("access-token")))
+  //        .thenThrow(
+  //            new GeneralStatusCodeErrorException(
+  //                new ErrorMessage(
+  //                    "Google Login Failed",
+  //                    "OAuth Error",
+  //                    HttpStatus.UNAUTHORIZED,
+  //                    HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
+  //                    ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                    new java.util.Date().toString(),
+  //                    null)));
+  //
+  //    // Act & Assert
+  //    assertThrows(
+  //        GeneralStatusCodeErrorException.class,
+  //        () -> authController.loginWithGoogle(oauthLoginDto, X_CORRELATION_ID));
+  //
+  //    // Verify
+  //    verify(authService).loginWithGoogle(anyString(), anyString(), eq("access-token"));
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGithub Success")
+  //  void loginWithGithub_Success() throws Exception {
+  //    // Arrange
+  //    oauthLoginDto.setCode("github-code");
+  //
+  //    when(authService.loginWithGithub(anyString(), anyString(), eq("github-code")))
+  //        .thenReturn(loginResponse);
+  //
+  //    // Act
+  //    ResponseEntity<?> response = authController.loginWithGithub(oauthLoginDto,
+  // X_CORRELATION_ID);
+  //
+  //    // Assert
+  //    assertEquals(HttpStatus.OK, response.getStatusCode());
+  //    assertNotNull(response.getBody());
+  //
+  //    LoginResponse result = (LoginResponse) response.getBody();
+  //
+  //    assertEquals("jwt-token", result.getToken());
+  //    assertEquals("john@test.com", result.getEmail());
+  //    assertEquals(UserRole.USER, result.getRole());
+  //
+  //    // Verify
+  //    verify(authService).loginWithGithub(anyString(), anyString(), eq("github-code"));
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("loginWithGithub Service Throws GeneralStatusCodeErrorException")
+  //  void loginWithGithub_ServiceThrowsGeneralStatusCodeErrorException() throws Exception {
+  //    // Arrange
+  //    oauthLoginDto.setCode("github-code");
+  //
+  //    when(authService.loginWithGithub(anyString(), anyString(), eq("github-code")))
+  //        .thenThrow(
+  //            new GeneralStatusCodeErrorException(
+  //                new ErrorMessage(
+  //                    "Github Login Failed",
+  //                    "OAuth Error",
+  //                    HttpStatus.UNAUTHORIZED,
+  //                    HttpStatusCodeEnum.UNAUTHORIZED.getValue(),
+  //                    ErrorMessageCodeEnum.LOGIN_FAILED.getCode(),
+  //                    new java.util.Date().toString(),
+  //                    null)));
+  //
+  //    // Act & Assert
+  //    assertThrows(
+  //        GeneralStatusCodeErrorException.class,
+  //        () -> authController.loginWithGithub(oauthLoginDto, X_CORRELATION_ID));
+  //
+  //    // Verify
+  //    verify(authService).loginWithGithub(anyString(), anyString(), eq("github-code"));
+  //  }
 }

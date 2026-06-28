@@ -415,4 +415,38 @@ public class ProductServiceImpl implements ProductService {
               null));
     }
   }
+
+  /**
+   * Get all low stock products across all users (no SecurityContext — for background jobs only).
+   *
+   * @param correlationId String
+   * @param logKey String
+   * @return List<ProductDto>
+   * @throws GeneralStatusCodeErrorException if an error occurs during the operation
+   */
+  @Override
+  public List<ProductDto> getAllLowStockProducts(String correlationId, String logKey)
+      throws GeneralStatusCodeErrorException {
+
+    try {
+
+      ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
+
+      return productRepository.getAllLowStockProducts(correlationId, logKey);
+
+    } catch (Exception e) {
+
+      ActivityLog.logError(correlationId, logKey, SERVICE_IMPL, EXCEPTION_LOG, e.getMessage());
+
+      throw new GeneralStatusCodeErrorException(
+          new ErrorMessage(
+              "Failed to get all low stock products",
+              "Internal Server Error",
+              HttpStatus.INTERNAL_SERVER_ERROR,
+              HttpStatusCodeEnum.INTERNAL_SERVER_ERROR.getValue(),
+              ErrorMessageCodeEnum.INTERNAL_SERVER_ERROR.getCode(),
+              new Date().toString(),
+              null));
+    }
+  }
 }

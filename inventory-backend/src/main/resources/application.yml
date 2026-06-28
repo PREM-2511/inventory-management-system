@@ -35,6 +35,7 @@ app:
     delete-days: 30
     batch-size: 100
     cron: "0 0 4 * * *"
+    low-stock-cron: "*/30 * * * * *"
     time-zone: Asia/Colombo
     date-time-format: "yyyy-MM-dd HH:mm:ss"
 

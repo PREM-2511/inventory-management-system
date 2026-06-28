@@ -158,47 +158,47 @@ public class AuthController {
     return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue())).build();
   }
 
-  /**
-   * Authenticate a user using Google OAuth.
-   *
-   * @param oauthDto OAuthLoginDto
-   * @param correlationId String
-   * @return ResponseEntity<LoginResponse>
-   */
-  @PostMapping("/oauth/google")
-  public ResponseEntity<LoginResponse> loginWithGoogle(
-      @RequestBody OAuthLoginDto oauthDto,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
-      throws GeneralStatusCodeErrorException {
-
-    String logKey = MAIN_LOG_KEY + "OAUTH_GOOGLE";
-
-    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
-
-    String token =
-        oauthDto.getAccessToken() != null ? oauthDto.getAccessToken() : oauthDto.getIdToken();
-    return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue()))
-        .body(authService.loginWithGoogle(correlationId, logKey, token));
-  }
-
-  /**
-   * Authenticate a user using GitHub OAuth.
-   *
-   * @param oauthDto OAuthLoginDto
-   * @param correlationId String
-   * @return ResponseEntity<LoginResponse>
-   */
-  @PostMapping("/oauth/github")
-  public ResponseEntity<LoginResponse> loginWithGithub(
-      @RequestBody OAuthLoginDto oauthDto,
-      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
-      throws GeneralStatusCodeErrorException {
-
-    String logKey = MAIN_LOG_KEY + "OAUTH_GITHUB";
-
-    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
-
-    return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue()))
-        .body(authService.loginWithGithub(correlationId, logKey, oauthDto.getCode()));
-  }
+//  /**
+//   * Authenticate a user using Google OAuth.
+//   *
+//   * @param oauthDto OAuthLoginDto
+//   * @param correlationId String
+//   * @return ResponseEntity<LoginResponse>
+//   */
+//  @PostMapping("/oauth/google")
+//  public ResponseEntity<LoginResponse> loginWithGoogle(
+//      @RequestBody OAuthLoginDto oauthDto,
+//      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
+//      throws GeneralStatusCodeErrorException {
+//
+//    String logKey = MAIN_LOG_KEY + "OAUTH_GOOGLE";
+//
+//    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
+//
+//    String token =
+//        oauthDto.getAccessToken() != null ? oauthDto.getAccessToken() : oauthDto.getIdToken();
+//    return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue()))
+//        .body(authService.loginWithGoogle(correlationId, logKey, token));
+//  }
+//
+//  /**
+//   * Authenticate a user using GitHub OAuth.
+//   *
+//   * @param oauthDto OAuthLoginDto
+//   * @param correlationId String
+//   * @return ResponseEntity<LoginResponse>
+//   */
+//  @PostMapping("/oauth/github")
+//  public ResponseEntity<LoginResponse> loginWithGithub(
+//      @RequestBody OAuthLoginDto oauthDto,
+//      @RequestHeader(value = X_CORRELATION_ID, defaultValue = "") String correlationId)
+//      throws GeneralStatusCodeErrorException {
+//
+//    String logKey = MAIN_LOG_KEY + "OAUTH_GITHUB";
+//
+//    ActivityLog.logInfo(correlationId, logKey, CONTROLLER, INIT_LOG);
+//
+//    return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatusCodeEnum.OK.getValue()))
+//        .body(authService.loginWithGithub(correlationId, logKey, oauthDto.getCode()));
+//  }
 }
