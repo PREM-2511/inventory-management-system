@@ -13,6 +13,9 @@ import com.stockiq.inventory.entity.Product;
 import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.service.CategoryService;
 import com.stockiq.inventory.service.ProductService;
+import com.stockiq.inventory.service.AuditTrailService;
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -33,10 +36,15 @@ public class ProductServiceImpl implements ProductService {
 
   private final ProductRepository productRepository;
   private final CategoryService categoryService;
+  private final AuditTrailService auditTrailService;
 
-  public ProductServiceImpl(ProductRepository productRepository, CategoryService categoryService) {
+  public ProductServiceImpl(
+      ProductRepository productRepository,
+      CategoryService categoryService,
+      AuditTrailService auditTrailService) {
     this.productRepository = productRepository;
     this.categoryService = categoryService;
+    this.auditTrailService = auditTrailService;
   }
 
   /**
@@ -77,6 +85,23 @@ public class ProductServiceImpl implements ProductService {
 
       productDto.setId(id);
       productDto.setCreatedAt(product.getCreatedAt().toString());
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.CREATE,
+          AuditEntityType.PRODUCT,
+          id,
+          productDto.getName(),
+          null,
+          "Qty="
+              + productDto.getQty()
+              + ", Reorder="
+              + productDto.getReorder()
+              + ", Category="
+              + productDto.getCategory()
+              + ", Status="
+              + (productDto.getStatus() != null ? productDto.getStatus().name() : "IN_STOCK"));
 
       return productDto;
 
@@ -128,6 +153,8 @@ public class ProductServiceImpl implements ProductService {
 
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
+      ProductDto oldProduct = findById(correlationId, logKey, id);
+
       Category category =
           categoryService.findByName(correlationId, logKey, productDto.getCategory());
 
@@ -159,6 +186,56 @@ public class ProductServiceImpl implements ProductService {
                 ErrorMessageCodeEnum.PRODUCT_NOT_FOUND.getCode(),
                 new Date().toString(),
                 null));
+      }
+
+      StringBuilder oldVal = new StringBuilder();
+      StringBuilder newVal = new StringBuilder();
+
+      if (oldProduct.getName() != null && !oldProduct.getName().equals(productDto.getName())) {
+        oldVal.append("Name=").append(oldProduct.getName()).append("; ");
+        newVal.append("Name=").append(productDto.getName()).append("; ");
+      }
+      if (oldProduct.getQty() != productDto.getQty()) {
+        oldVal.append("Qty=").append(oldProduct.getQty()).append("; ");
+        newVal.append("Qty=").append(productDto.getQty()).append("; ");
+      }
+      if (oldProduct.getReorder() != productDto.getReorder()) {
+        oldVal.append("Reorder=").append(oldProduct.getReorder()).append("; ");
+        newVal.append("Reorder=").append(productDto.getReorder()).append("; ");
+      }
+      if (oldProduct.getCategory() != null
+          && !oldProduct.getCategory().equals(productDto.getCategory())) {
+        oldVal.append("Category=").append(oldProduct.getCategory()).append("; ");
+        newVal.append("Category=").append(productDto.getCategory()).append("; ");
+      }
+      com.stockiq.inventory.common.enums.product.ProductStatus newStatus =
+          productDto.getStatus() != null
+              ? productDto.getStatus()
+              : com.stockiq.inventory.common.enums.product.ProductStatus.IN_STOCK;
+      if (oldProduct.getStatus() != newStatus) {
+        oldVal.append("Status=").append(oldProduct.getStatus()).append("; ");
+        newVal.append("Status=").append(newStatus).append("; ");
+      }
+
+      String oldString = oldVal.toString().trim();
+      String newString = newVal.toString().trim();
+      if (oldString.endsWith(";")) {
+        oldString = oldString.substring(0, oldString.length() - 1).trim();
+      }
+      if (newString.endsWith(";")) {
+        newString = newString.substring(0, newString.length() - 1).trim();
+      }
+
+      if (!oldString.isEmpty() || !newString.isEmpty()) {
+        auditTrailService.record(
+            correlationId,
+            logKey,
+            AuditAction.UPDATE,
+            AuditEntityType.PRODUCT,
+            id,
+            productDto.getName(),
+            oldString,
+            newString);
       }
 
     } catch (DuplicateKeyException e) {
@@ -214,6 +291,8 @@ public class ProductServiceImpl implements ProductService {
 
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
+      ProductDto oldProduct = findById(correlationId, logKey, id);
+
       int deleted = productRepository.delete(correlationId, logKey, id);
 
       if (deleted == 0) {
@@ -228,6 +307,25 @@ public class ProductServiceImpl implements ProductService {
                 new Date().toString(),
                 null));
       }
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.DELETE,
+          AuditEntityType.PRODUCT,
+          id,
+          oldProduct.getName(),
+          "Name="
+              + oldProduct.getName()
+              + ", Qty="
+              + oldProduct.getQty()
+              + ", Reorder="
+              + oldProduct.getReorder()
+              + ", Category="
+              + oldProduct.getCategory()
+              + ", Status="
+              + (oldProduct.getStatus() != null ? oldProduct.getStatus().name() : "IN_STOCK"),
+          null);
 
     } catch (GeneralStatusCodeErrorException e) {
 

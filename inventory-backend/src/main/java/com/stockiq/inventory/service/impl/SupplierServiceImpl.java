@@ -12,6 +12,9 @@ import com.stockiq.inventory.dto.SupplierDto;
 import com.stockiq.inventory.entity.Supplier;
 import com.stockiq.inventory.repository.SupplierRepository;
 import com.stockiq.inventory.service.SupplierService;
+import com.stockiq.inventory.service.AuditTrailService;
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -31,9 +34,12 @@ public class SupplierServiceImpl implements SupplierService {
   private static final String DUPLICATE_EXCEPTION_LOG = "duplicate_exception_log";
 
   private final SupplierRepository supplierRepository;
+  private final AuditTrailService auditTrailService;
 
-  public SupplierServiceImpl(SupplierRepository supplierRepository) {
+  public SupplierServiceImpl(
+      SupplierRepository supplierRepository, AuditTrailService auditTrailService) {
     this.supplierRepository = supplierRepository;
+    this.auditTrailService = auditTrailService;
   }
 
   /**
@@ -61,6 +67,23 @@ public class SupplierServiceImpl implements SupplierService {
       supplierDto.setId(id);
       supplierDto.setStatus(SupplierStatus.fromString(supplier.getStatus()));
       supplierDto.setCreatedAt(supplier.getCreatedAt().toString());
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.CREATE,
+          AuditEntityType.SUPPLIER,
+          id,
+          supplierDto.getName(),
+          null,
+          "Category="
+              + supplierDto.getCategory()
+              + ", Status="
+              + supplierDto.getStatus().name()
+              + ", Email="
+              + supplierDto.getEmail()
+              + ", Phone="
+              + supplierDto.getPhone());
 
       return supplierDto;
 
@@ -112,6 +135,8 @@ public class SupplierServiceImpl implements SupplierService {
 
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
+      SupplierDetails existingSupplier = findById(correlationId, logKey, id);
+
       Supplier supplier = toEntity(supplierDto);
       supplier.setId(id);
       supplier.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
@@ -129,6 +154,57 @@ public class SupplierServiceImpl implements SupplierService {
                 ErrorMessageCodeEnum.SUPPLIER_NOT_FOUND.getCode(),
                 new Date().toString(),
                 null));
+      }
+
+      StringBuilder oldVal = new StringBuilder();
+      StringBuilder newVal = new StringBuilder();
+
+      if (existingSupplier.getName() != null
+          && !existingSupplier.getName().equals(supplierDto.getName())) {
+        oldVal.append("Name=").append(existingSupplier.getName()).append("; ");
+        newVal.append("Name=").append(supplierDto.getName()).append("; ");
+      }
+      if (existingSupplier.getCategory() != null
+          && !existingSupplier.getCategory().equals(supplierDto.getCategory())) {
+        oldVal.append("Category=").append(existingSupplier.getCategory()).append("; ");
+        newVal.append("Category=").append(supplierDto.getCategory()).append("; ");
+      }
+      SupplierStatus newStatus =
+          supplierDto.getStatus() != null ? supplierDto.getStatus() : existingSupplier.getStatus();
+      if (existingSupplier.getStatus() != newStatus) {
+        oldVal.append("Status=").append(existingSupplier.getStatus().name()).append("; ");
+        newVal.append("Status=").append(newStatus.name()).append("; ");
+      }
+      if (existingSupplier.getEmail() != null
+          && !existingSupplier.getEmail().equals(supplierDto.getEmail())) {
+        oldVal.append("Email=").append(existingSupplier.getEmail()).append("; ");
+        newVal.append("Email=").append(supplierDto.getEmail()).append("; ");
+      }
+      if (existingSupplier.getPhone() != null
+          && !existingSupplier.getPhone().equals(supplierDto.getPhone())) {
+        oldVal.append("Phone=").append(existingSupplier.getPhone()).append("; ");
+        newVal.append("Phone=").append(supplierDto.getPhone()).append("; ");
+      }
+
+      String oldString = oldVal.toString().trim();
+      String newString = newVal.toString().trim();
+      if (oldString.endsWith(";")) {
+        oldString = oldString.substring(0, oldString.length() - 1).trim();
+      }
+      if (newString.endsWith(";")) {
+        newString = newString.substring(0, newString.length() - 1).trim();
+      }
+
+      if (!oldString.isEmpty() || !newString.isEmpty()) {
+        auditTrailService.record(
+            correlationId,
+            logKey,
+            AuditAction.UPDATE,
+            AuditEntityType.SUPPLIER,
+            id,
+            supplierDto.getName(),
+            oldString,
+            newString);
       }
 
     } catch (DuplicateKeyException e) {
@@ -184,6 +260,8 @@ public class SupplierServiceImpl implements SupplierService {
 
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
+      SupplierDetails existingSupplier = findById(correlationId, logKey, id);
+
       int deleted = supplierRepository.delete(correlationId, logKey, id);
 
       if (deleted == 0) {
@@ -198,6 +276,23 @@ public class SupplierServiceImpl implements SupplierService {
                 new Date().toString(),
                 null));
       }
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.DELETE,
+          AuditEntityType.SUPPLIER,
+          id,
+          existingSupplier.getName(),
+          "Category="
+              + existingSupplier.getCategory()
+              + ", Status="
+              + existingSupplier.getStatus().name()
+              + ", Email="
+              + existingSupplier.getEmail()
+              + ", Phone="
+              + existingSupplier.getPhone(),
+          null);
 
     } catch (GeneralStatusCodeErrorException e) {
 

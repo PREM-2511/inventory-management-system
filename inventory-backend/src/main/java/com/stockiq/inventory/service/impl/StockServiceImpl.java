@@ -16,6 +16,9 @@ import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.repository.StockRepository;
 import com.stockiq.inventory.repository.NotificationRepository;
 import com.stockiq.inventory.service.StockService;
+import com.stockiq.inventory.service.AuditTrailService;
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,15 +38,18 @@ public class StockServiceImpl implements StockService {
   private final ProductRepository productRepository;
   private final StockRepository stockRepository;
   private final NotificationRepository notificationRepository;
+  private final AuditTrailService auditTrailService;
 
   public StockServiceImpl(
       ProductRepository productRepository,
       StockRepository stockRepository,
-      NotificationRepository notificationRepository) {
+      NotificationRepository notificationRepository,
+      AuditTrailService auditTrailService) {
 
     this.productRepository = productRepository;
     this.stockRepository = stockRepository;
     this.notificationRepository = notificationRepository;
+    this.auditTrailService = auditTrailService;
   }
 
   /**
@@ -79,6 +85,7 @@ public class StockServiceImpl implements StockService {
                               new java.util.Date().toString(),
                               null)));
 
+      int oldQty = product.getQty();
       int newQty;
 
       if (movementDto.getType() == MovementType.IN) {
@@ -119,6 +126,16 @@ public class StockServiceImpl implements StockService {
               .build();
 
       long transactionId = stockRepository.save(correlationId, logKey, transaction);
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          movementDto.getType() == MovementType.IN ? AuditAction.STOCK_IN : AuditAction.STOCK_OUT,
+          AuditEntityType.STOCK,
+          transactionId,
+          product.getName(),
+          "Qty=" + oldQty,
+          "Qty=" + newQty);
 
       // Trigger automatic notification based on stock levels
       if (movementDto.getType() == MovementType.IN) {
