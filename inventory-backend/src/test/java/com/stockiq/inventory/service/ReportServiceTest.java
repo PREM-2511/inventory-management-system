@@ -307,16 +307,14 @@ class ReportServiceTest {
         .thenReturn(List.of(item));
 
     // Act
-    byte[] result =
-        reportService.exportSupplierReport("corrId", "logKey", "pdf");
+    byte[] result = reportService.exportSupplierReport("corrId", "logKey", "pdf");
 
     // Assert
     assertNotNull(result);
     assertTrue(result.length > 0);
 
     // Verify
-    verify(reportRepository)
-        .getSupplierReport(anyString(), anyString(), eq(1L));
+    verify(reportRepository).getSupplierReport(anyString(), anyString(), eq(1L));
   }
 
   @Test
@@ -337,16 +335,14 @@ class ReportServiceTest {
         .thenReturn(List.of(item));
 
     // Act
-    byte[] result =
-        reportService.exportSupplierReport("corrId", "logKey", "excel");
+    byte[] result = reportService.exportSupplierReport("corrId", "logKey", "excel");
 
     // Assert
     assertNotNull(result);
     assertTrue(result.length > 0);
 
     // Verify
-    verify(reportRepository)
-        .getSupplierReport(anyString(), anyString(), eq(1L));
+    verify(reportRepository).getSupplierReport(anyString(), anyString(), eq(1L));
   }
 
   @Test
@@ -363,7 +359,6 @@ class ReportServiceTest {
         () -> reportService.exportSupplierReport("corrId", "logKey", "pdf"));
 
     // Verify
-    verify(reportRepository)
-        .getSupplierReport(anyString(), anyString(), eq(1L));
+    verify(reportRepository).getSupplierReport(anyString(), anyString(), eq(1L));
   }
 }

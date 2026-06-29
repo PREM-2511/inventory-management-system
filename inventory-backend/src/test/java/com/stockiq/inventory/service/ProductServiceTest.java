@@ -34,6 +34,7 @@ class ProductServiceTest {
 
   @Mock private ProductRepository productRepository;
   @Mock private CategoryService categoryService;
+  @Mock private AuditTrailService auditTrailService;
 
   @InjectMocks private ProductServiceImpl productService;
 
@@ -74,17 +75,24 @@ class ProductServiceTest {
 
     when(productRepository.save(anyString(), anyString(), any(Product.class))).thenReturn(1L);
 
-    // Act
-    ProductDto response = productService.save(CORRELATION_ID, LOG_KEY, productDto);
+    try (MockedStatic<com.stockiq.inventory.common.util.SecurityUtils> mockedSecurity =
+        mockStatic(com.stockiq.inventory.common.util.SecurityUtils.class)) {
+      mockedSecurity
+          .when(com.stockiq.inventory.common.util.SecurityUtils::getCurrentUserId)
+          .thenReturn("user-1");
 
-    // Assert
-    assertNotNull(response);
-    assertEquals(1L, response.getId());
+      // Act
+      ProductDto response = productService.save(CORRELATION_ID, LOG_KEY, productDto);
 
-    // Verify
-    verify(categoryService, times(1)).findByName(anyString(), anyString(), anyString());
+      // Assert
+      assertNotNull(response);
+      assertEquals(1L, response.getId());
 
-    verify(productRepository, times(1)).save(anyString(), anyString(), any(Product.class));
+      // Verify
+      verify(categoryService, times(1)).findByName(anyString(), anyString(), anyString());
+
+      verify(productRepository, times(1)).save(anyString(), anyString(), any(Product.class));
+    }
   }
 
   @Test
@@ -96,10 +104,17 @@ class ProductServiceTest {
     when(productRepository.save(anyString(), anyString(), any(Product.class)))
         .thenThrow(new DuplicateKeyException("duplicate"));
 
-    // Act & Assert
-    assertThrows(
+    try (MockedStatic<com.stockiq.inventory.common.util.SecurityUtils> mockedSecurity =
+      mockStatic(com.stockiq.inventory.common.util.SecurityUtils.class)) {
+      mockedSecurity
+        .when(com.stockiq.inventory.common.util.SecurityUtils::getCurrentUserId)
+        .thenReturn("user-1");
+
+      // Act & Assert
+      assertThrows(
         GeneralStatusCodeErrorException.class,
         () -> productService.save(CORRELATION_ID, LOG_KEY, productDto));
+    }
 
     // Verify
     verify(productRepository, times(1)).save(anyString(), anyString(), any(Product.class));
@@ -114,10 +129,17 @@ class ProductServiceTest {
     when(productRepository.save(anyString(), anyString(), any(Product.class)))
         .thenThrow(new RuntimeException("DB error"));
 
-    // Act & Assert
-    assertThrows(
+    try (MockedStatic<com.stockiq.inventory.common.util.SecurityUtils> mockedSecurity =
+      mockStatic(com.stockiq.inventory.common.util.SecurityUtils.class)) {
+      mockedSecurity
+        .when(com.stockiq.inventory.common.util.SecurityUtils::getCurrentUserId)
+        .thenReturn("user-1");
+
+      // Act & Assert
+      assertThrows(
         GeneralStatusCodeErrorException.class,
         () -> productService.save(CORRELATION_ID, LOG_KEY, productDto));
+    }
 
     // Verify
     verify(productRepository, times(1)).save(anyString(), anyString(), any(Product.class));
@@ -140,18 +162,25 @@ class ProductServiceTest {
 
     when(productRepository.save(anyString(), anyString(), any(Product.class))).thenReturn(1L);
 
-    // Act
-    productService.save(CORRELATION_ID, LOG_KEY, dto);
+    try (MockedStatic<com.stockiq.inventory.common.util.SecurityUtils> mockedSecurity =
+        mockStatic(com.stockiq.inventory.common.util.SecurityUtils.class)) {
+      mockedSecurity
+          .when(com.stockiq.inventory.common.util.SecurityUtils::getCurrentUserId)
+          .thenReturn("user-1");
 
-    // Assert + Capture
-    ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
+      // Act
+      productService.save(CORRELATION_ID, LOG_KEY, dto);
 
-    verify(productRepository).save(anyString(), anyString(), productCaptor.capture());
+      // Assert + Capture
+      ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
 
-    Product savedProduct = productCaptor.getValue();
+      verify(productRepository).save(anyString(), anyString(), productCaptor.capture());
 
-    // This is the missing branch check
-    assertEquals(ProductStatus.IN_STOCK.getValue(), savedProduct.getStatus());
+      Product savedProduct = productCaptor.getValue();
+
+      // This is the missing branch check
+      assertEquals(ProductStatus.IN_STOCK.getValue(), savedProduct.getStatus());
+    }
   }
 
   @Test
@@ -190,6 +219,8 @@ class ProductServiceTest {
   @DisplayName("delete product success")
   void delete_ReturnsSuccess() throws Exception {
     // Arrange
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+        .thenReturn(Optional.of(productDto));
     when(productRepository.delete(anyString(), anyString(), anyLong())).thenReturn(1);
 
     // Act
@@ -205,6 +236,8 @@ class ProductServiceTest {
   @DisplayName("delete product not found")
   void delete_NotFound() throws Exception {
     // Arrange
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+        .thenReturn(Optional.of(productDto));
     when(productRepository.delete(anyString(), anyString(), anyLong())).thenReturn(0);
 
     // Act & Assert
@@ -220,6 +253,8 @@ class ProductServiceTest {
   @DisplayName("delete product exception")
   void delete_Exception() throws Exception {
     // Arrange
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+      .thenReturn(Optional.of(productDto));
     when(productRepository.delete(anyString(), anyString(), anyLong()))
         .thenThrow(new RuntimeException("DB error"));
 
@@ -281,6 +316,8 @@ class ProductServiceTest {
   void update_Success() throws Exception {
     // Arrange
     when(categoryService.findByName(anyString(), anyString(), anyString())).thenReturn(category);
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+        .thenReturn(Optional.of(productDto));
 
     when(productRepository.update(anyString(), anyString(), any(Product.class))).thenReturn(1);
 
@@ -306,6 +343,8 @@ class ProductServiceTest {
   void update_NotFound() throws Exception {
     // Arrange
     when(categoryService.findByName(anyString(), anyString(), anyString())).thenReturn(category);
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+        .thenReturn(Optional.of(productDto));
 
     when(productRepository.update(anyString(), anyString(), any(Product.class))).thenReturn(0);
 
@@ -330,6 +369,8 @@ class ProductServiceTest {
   void update_DuplicateKeyException() throws Exception {
     // Arrange
     when(categoryService.findByName(anyString(), anyString(), anyString())).thenReturn(category);
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+      .thenReturn(Optional.of(productDto));
 
     when(productRepository.update(anyString(), anyString(), any(Product.class)))
         .thenThrow(new DuplicateKeyException("duplicate"));
@@ -353,6 +394,8 @@ class ProductServiceTest {
   void update_GenericException() throws Exception {
     // Arrange
     when(categoryService.findByName(anyString(), anyString(), anyString())).thenReturn(category);
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+      .thenReturn(Optional.of(productDto));
 
     when(productRepository.update(anyString(), anyString(), any(Product.class)))
         .thenThrow(new RuntimeException("DB error"));
@@ -385,6 +428,8 @@ class ProductServiceTest {
             .build();
 
     when(categoryService.findByName(anyString(), anyString(), anyString())).thenReturn(category);
+    when(productRepository.findById(eq(CORRELATION_ID), eq(LOG_KEY), eq(1L)))
+      .thenReturn(Optional.of(productDto));
 
     when(productRepository.update(anyString(), anyString(), any(Product.class))).thenReturn(1);
 

@@ -1,5 +1,7 @@
 package com.stockiq.inventory.service;
 
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
 import com.stockiq.inventory.common.enums.category.Status;
 import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.common.response.category.CategoryDetails;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -31,6 +34,8 @@ class CategoryServiceTest {
   private static final String LOG_KEY = "log-key";
 
   @Mock private CategoryRepository categoryRepository;
+
+  @Mock private AuditTrailService auditTrailService;
 
   @InjectMocks private CategoryServiceImpl categoryService;
 
@@ -60,6 +65,10 @@ class CategoryServiceTest {
     // Arrange
     when(categoryRepository.save(anyString(), anyString(), any(Category.class))).thenReturn(1L);
 
+    doNothing()
+        .when(auditTrailService)
+        .record(anyString(), anyString(), any(), any(), anyLong(), anyString(), any(), anyString());
+
     // Act
     CategoryDto result = categoryService.save(CORRELATION_ID, LOG_KEY, categoryDto);
 
@@ -69,6 +78,17 @@ class CategoryServiceTest {
 
     // Verify
     verify(categoryRepository, times(1)).save(anyString(), anyString(), any(Category.class));
+
+    verify(auditTrailService, times(1))
+        .record(
+            anyString(),
+            anyString(),
+            eq(AuditAction.CREATE),
+            eq(AuditEntityType.CATEGORY),
+            eq(1L),
+            anyString(),
+            isNull(),
+            anyString());
   }
 
   @Test
@@ -210,28 +230,56 @@ class CategoryServiceTest {
   @DisplayName("delete success")
   void delete_Success() throws Exception {
     // Arrange
+    when(categoryRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(categoryDto));
+
     when(categoryRepository.delete(anyString(), anyString(), anyLong())).thenReturn(1);
+
+    doNothing()
+        .when(auditTrailService)
+        .record(anyString(), anyString(), any(), any(), anyLong(), anyString(), anyString(), any());
 
     // Act
     assertDoesNotThrow(() -> categoryService.delete(CORRELATION_ID, LOG_KEY, 1L));
+
+    // Verify
+    verify(categoryRepository).findById(anyString(), anyString(), anyLong());
+    verify(categoryRepository).delete(anyString(), anyString(), anyLong());
+    verify(auditTrailService)
+        .record(
+            anyString(),
+            anyString(),
+            eq(AuditAction.DELETE),
+            eq(AuditEntityType.CATEGORY),
+            eq(1L),
+            eq("Electronics"),
+            anyString(),
+            isNull());
   }
 
   @Test
   @DisplayName("delete not found")
   void delete_NotFound() throws Exception {
     // Arrange
-    when(categoryRepository.delete(anyString(), anyString(), anyLong())).thenReturn(0);
+    when(categoryRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.empty());
 
     // Act & Assert
     assertThrows(
         GeneralStatusCodeErrorException.class,
         () -> categoryService.delete(CORRELATION_ID, LOG_KEY, 1L));
+
+    verify(categoryRepository).findById(anyString(), anyString(), anyLong());
+    verify(categoryRepository, never()).delete(anyString(), anyString(), anyLong());
   }
 
   @Test
   @DisplayName("delete generic exception")
   void delete_GenericException() throws Exception {
     // Arrange
+    when(categoryRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(categoryDto));
+
     when(categoryRepository.delete(anyString(), anyString(), anyLong()))
         .thenThrow(new RuntimeException("db error"));
 
@@ -360,5 +408,83 @@ class CategoryServiceTest {
     assertThrows(
         GeneralStatusCodeErrorException.class,
         () -> categoryService.findByName(CORRELATION_ID, LOG_KEY, "Electronics"));
+  }
+
+  @Test
+  @DisplayName("update success - audit fields covered")
+  void update_AuditCoverage() throws Exception {
+    // Arrange
+    long id = 1L;
+
+    CategoryDto existing = new CategoryDto();
+    existing.setId(id);
+    existing.setName("Old Name");
+    existing.setIcon("Old Icon");
+    existing.setStatus(Status.ACTIVE);
+
+    CategoryDto request = new CategoryDto();
+    request.setName("New Name");
+    request.setIcon("New Icon");
+    request.setStatus(Status.INACTIVE);
+
+    when(categoryRepository.findById(anyString(), anyString(), eq(id)))
+        .thenReturn(Optional.of(existing));
+
+    when(categoryRepository.update(anyString(), anyString(), any(Category.class))).thenReturn(1);
+
+    doNothing()
+        .when(auditTrailService)
+        .record(
+            anyString(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyString(),
+            anyString());
+
+    // Act
+    assertDoesNotThrow(() -> categoryService.update(CORRELATION_ID, LOG_KEY, request, id));
+
+    // Verify audit triggered
+    verify(auditTrailService, times(1))
+        .record(
+            eq(CORRELATION_ID),
+            eq(LOG_KEY),
+            eq(AuditAction.UPDATE),
+            eq(AuditEntityType.CATEGORY),
+            eq(id),
+            eq("New Name"),
+            anyString(), // old values
+            anyString() // new values
+            );
+  }
+
+  @Test
+  @DisplayName("Delete Category - Should throw exception when category is not found")
+  void delete_CategoryNotFound() throws Exception {
+    // Arrange
+    long id = 1L;
+
+    CategoryServiceImpl spyService = Mockito.spy(categoryService);
+
+    doReturn(categoryDto).when(spyService).findById(CORRELATION_ID, LOG_KEY, id);
+
+    when(categoryRepository.delete(CORRELATION_ID, LOG_KEY, id)).thenReturn(0);
+
+    // Act
+    GeneralStatusCodeErrorException ex =
+        assertThrows(
+            GeneralStatusCodeErrorException.class,
+            () -> spyService.delete(CORRELATION_ID, LOG_KEY, id));
+
+    // Assert
+    assertNotNull(ex);
+
+    // Verify
+    verify(categoryRepository).delete(CORRELATION_ID, LOG_KEY, id);
+    verify(auditTrailService, never())
+        .record(any(), any(), any(), any(), any(), any(), any(), any());
   }
 }
