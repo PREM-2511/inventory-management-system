@@ -7,8 +7,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "SHeshan@1234"
       MYSQL_DATABASE: inventory_db
-      MYSQL_USER: inventory_user
-      MYSQL_PASSWORD: "inventory123"
 
     ports:
       - "3307:3306"
@@ -46,6 +44,20 @@ services:
       DB_PASSWORD: "SHeshan@1234"
 
       SPRING_FLYWAY_ENABLED: "true"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+
+    container_name: inventory-frontend
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "3000:80"
 
 volumes:
   mysql-data:
