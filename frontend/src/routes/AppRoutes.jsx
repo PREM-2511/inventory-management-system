@@ -11,7 +11,9 @@ import CategoriesPage from '../pages/CategoriesPage';
 import SuppliersPage from '../pages/SuppliersPage';
 import StockPage from '../pages/StockPage';
 import LowStockPage from '../pages/LowStockPage';
+import ReportsPage from '../pages/ReportsPage';
 import AccountPage from '../pages/AccountPage';
+import AuditTrailPage from '../pages/AuditTrailPage';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import GuestRoute from '../components/common/GuestRoute';
 
@@ -34,6 +36,8 @@ const AppRoutes = () => {
       <Route path="/suppliers" element={<ProtectedRoute><SuppliersPage /></ProtectedRoute>} />
       <Route path="/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><LowStockPage /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      <Route path="/audit-trail" element={<ProtectedRoute><AuditTrailPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       
       {/* Fallback redirecting back to landing page */}

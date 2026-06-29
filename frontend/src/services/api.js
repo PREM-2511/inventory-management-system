@@ -114,4 +114,19 @@ export const notificationAPI = {
   delete: (id) => api.delete(`/notifications/${id}`),
 };
 
+// Audit Trail API
+export const auditTrailAPI = {
+  getAll: (params) => api.get('/audit-trail', { params }),
+};
+
+// Report API
+export const reportAPI = {
+  getInventoryReport: () => api.get('/reports/inventory'),
+  exportInventoryReport: (format) => api.get('/reports/inventory/export', { params: { format }, responseType: 'blob' }),
+  getLowStockReport: () => api.get('/reports/low-stock'),
+  exportLowStockReport: (format) => api.get('/reports/low-stock/export', { params: { format }, responseType: 'blob' }),
+  getSupplierReport: () => api.get('/reports/supplier'),
+  exportSupplierReport: (format) => api.get('/reports/supplier/export', { params: { format }, responseType: 'blob' }),
+};
+
 export default api;
