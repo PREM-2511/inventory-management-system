@@ -1,12 +1,17 @@
 package com.stockiq.inventory.repository.impl;
 
+import com.stockiq.inventory.common.enums.product.ProductStatus;
+import com.stockiq.inventory.common.enums.stock.StockLevel;
 import com.stockiq.inventory.common.util.ActivityLog;
 import com.stockiq.inventory.dto.ProductDto;
 import com.stockiq.inventory.entity.Product;
 import com.stockiq.inventory.repository.ProductRepository;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -36,6 +41,28 @@ public class ProductRepositoryImpl implements ProductRepository {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       """;
+
+  private final RowMapper<ProductDto> productRowMapper =
+      (rs, rowNum) -> {
+        int qty = rs.getInt("qty");
+        int reorderPoint = rs.getInt("reorder");
+        StockLevel stockLevel = StockLevel.fromQty(qty, reorderPoint);
+
+        return ProductDto.builder()
+            .id(rs.getLong("id"))
+            .userId(readNullableLong(rs, "userId"))
+            .name(rs.getString("name"))
+            .category(rs.getString("category"))
+            .qty(qty)
+            .reorder(reorderPoint)
+            .status(toProductStatus(stockLevel))
+            .stockLevel(stockLevel)
+            .createdBy(rs.getString("createdBy"))
+            .createdAt(asString(rs.getTimestamp("createdAt")))
+            .updatedBy(rs.getString("updatedBy"))
+            .updatedAt(asString(rs.getTimestamp("updatedAt")))
+            .build();
+      };
 
   private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -164,7 +191,7 @@ public class ProductRepositoryImpl implements ProductRepository {
                 .addValue(
                     "userId",
                     com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
-            BeanPropertyRowMapper.newInstance(ProductDto.class));
+            productRowMapper);
 
     return list.stream().findFirst();
   }
@@ -230,8 +257,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     params.addValue("limit", size);
     params.addValue("offset", Math.max(0, (page - 1) * size));
 
-    return jdbcTemplate.query(
-        sql.toString(), params, BeanPropertyRowMapper.newInstance(ProductDto.class));
+    return jdbcTemplate.query(sql.toString(), params, productRowMapper);
   }
 
   /**
@@ -288,7 +314,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         sql,
         new MapSqlParameterSource(
             "userId", com.stockiq.inventory.common.util.SecurityUtils.getCurrentUserIdAsLong()),
-        BeanPropertyRowMapper.newInstance(ProductDto.class));
+        productRowMapper);
   }
 
   /**
@@ -305,7 +331,24 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     String sql = SELECT_DTO + " WHERE p.qty <= p.reorder_point ORDER BY p.qty ASC";
 
-    return jdbcTemplate.query(
-        sql, new MapSqlParameterSource(), BeanPropertyRowMapper.newInstance(ProductDto.class));
+    return jdbcTemplate.query(sql, new MapSqlParameterSource(), productRowMapper);
+  }
+
+  private ProductStatus toProductStatus(StockLevel stockLevel) {
+    return switch (stockLevel) {
+      case NORMAL -> ProductStatus.IN_STOCK;
+      case LOW -> ProductStatus.LOW_STOCK;
+      case CRITICAL -> ProductStatus.CRITICAL;
+      case OUT_OF_STOCK -> ProductStatus.OUT_OF_STOCK;
+    };
+  }
+
+  private Long readNullableLong(ResultSet rs, String column) throws java.sql.SQLException {
+    Object value = rs.getObject(column);
+    return value != null ? rs.getLong(column) : null;
+  }
+
+  private String asString(Timestamp timestamp) {
+    return timestamp != null ? timestamp.toString() : null;
   }
 }

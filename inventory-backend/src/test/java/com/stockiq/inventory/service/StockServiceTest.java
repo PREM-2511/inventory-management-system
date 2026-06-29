@@ -1,6 +1,7 @@
 package com.stockiq.inventory.service;
 
 import com.stockiq.inventory.common.enums.stock.MovementType;
+import com.stockiq.inventory.common.enums.stock.StockLevel;
 import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.dto.ProductDto;
 import com.stockiq.inventory.dto.StockDto;
@@ -8,6 +9,7 @@ import com.stockiq.inventory.entity.Product;
 import com.stockiq.inventory.repository.NotificationRepository;
 import com.stockiq.inventory.repository.ProductRepository;
 import com.stockiq.inventory.repository.StockRepository;
+import com.stockiq.inventory.service.AuditTrailService;
 import com.stockiq.inventory.service.impl.StockServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -23,6 +26,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import com.stockiq.inventory.common.util.SecurityUtils;
 
 @ExtendWith(MockitoExtension.class)
 class StockServiceTest {
@@ -34,6 +38,7 @@ class StockServiceTest {
   @Mock private ProductRepository productRepository;
   @Mock private StockRepository stockRepository;
   @Mock private NotificationRepository notificationRepository;
+  @Mock private AuditTrailService auditTrailService;
 
   @InjectMocks private StockServiceImpl stockService;
 
@@ -59,19 +64,23 @@ class StockServiceTest {
 
     when(stockRepository.save(anyString(), anyString(), any())).thenReturn(100L);
 
-    // Act
-    StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
+    try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getCurrentUserEmail).thenReturn("admin@example.com");
 
-    // Assert
-    assertNotNull(response);
-    assertEquals(100L, response.getId());
+      // Act
+      StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
 
-    // Verify
-    verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
+      // Assert
+      assertNotNull(response);
+      assertEquals(100L, response.getId());
 
-    verify(productRepository, times(1)).update(anyString(), anyString(), any(Product.class));
+      // Verify
+      verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
 
-    verify(stockRepository, times(1)).save(anyString(), anyString(), any());
+      verify(productRepository, times(1)).update(anyString(), anyString(), any(Product.class));
+
+      verify(stockRepository, times(1)).save(anyString(), anyString(), any());
+    }
   }
 
   @Test
@@ -88,17 +97,21 @@ class StockServiceTest {
 
     when(stockRepository.save(anyString(), anyString(), any())).thenReturn(200L);
 
-    // Act
-    StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
+    try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getCurrentUserEmail).thenReturn("admin@example.com");
 
-    // Assert
-    assertNotNull(response);
-    assertEquals(200L, response.getId());
+      // Act
+      StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
 
-    // Verify
-    verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
+      // Assert
+      assertNotNull(response);
+      assertEquals(200L, response.getId());
 
-    verify(productRepository, times(1)).update(anyString(), anyString(), any(Product.class));
+      // Verify
+      verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
+
+      verify(productRepository, times(1)).update(anyString(), anyString(), any(Product.class));
+    }
 
     verify(stockRepository, times(1)).save(anyString(), anyString(), any());
   }
@@ -198,7 +211,7 @@ class StockServiceTest {
   @DisplayName("get low stock alerts success")
   void getLowStockAlerts_Success() throws Exception {
     // Arrange
-    ProductDto dto = ProductDto.builder().qty(2).reorder(5).build();
+    ProductDto dto = ProductDto.builder().qty(2).reorder(5).stockLevel(StockLevel.CRITICAL).build();
 
     when(productRepository.getLowStockAlerts(anyString(), anyString())).thenReturn(List.of(dto));
 
@@ -245,17 +258,21 @@ class StockServiceTest {
         .when(notificationRepository)
         .save(anyString(), anyString(), any());
 
-    // Act
-    StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
+    try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getCurrentUserEmail).thenReturn("admin@example.com");
 
-    // Assert
-    assertNotNull(response);
-    assertEquals(100L, response.getId());
+      // Act
+      StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
 
-    // Verify main flow still executed
-    verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
+      // Assert
+      assertNotNull(response);
+      assertEquals(100L, response.getId());
 
-    verify(notificationRepository, times(1)).save(anyString(), anyString(), any());
+      // Verify main flow still executed
+      verify(productRepository, times(1)).findByName(anyString(), anyString(), anyString());
+
+      verify(notificationRepository, times(1)).save(anyString(), anyString(), any());
+    }
   }
 
   @Test
@@ -280,14 +297,18 @@ class StockServiceTest {
         .when(notificationRepository)
         .save(anyString(), anyString(), any());
 
-    // Act
-    StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
+    try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getCurrentUserEmail).thenReturn("admin@example.com");
 
-    // Assert
-    assertNotNull(response);
-    assertEquals(200L, response.getId());
+      // Act
+      StockDto response = stockService.logMovement(CORRELATION_ID, LOG_KEY, stockDto, USER_ID);
 
-    // Verify notification was attempted
-    verify(notificationRepository, times(1)).save(anyString(), anyString(), any());
+      // Assert
+      assertNotNull(response);
+      assertEquals(200L, response.getId());
+
+      // Verify notification was attempted
+      verify(notificationRepository, times(1)).save(anyString(), anyString(), any());
+    }
   }
 }

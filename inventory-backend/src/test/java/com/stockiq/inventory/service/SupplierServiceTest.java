@@ -1,5 +1,8 @@
 package com.stockiq.inventory.service;
 
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
+import com.stockiq.inventory.common.enums.supplier.SupplierStatus;
 import com.stockiq.inventory.common.exception.GeneralStatusCodeErrorException;
 import com.stockiq.inventory.common.response.supplier.SupplierDetails;
 import com.stockiq.inventory.dto.SupplierDto;
@@ -30,6 +33,8 @@ class SupplierServiceTest {
 
   @Mock private SupplierRepository supplierRepository;
 
+  @Mock private AuditTrailService auditTrailService;
+
   @InjectMocks private SupplierServiceImpl supplierService;
 
   private Supplier supplier;
@@ -55,6 +60,14 @@ class SupplierServiceTest {
             .email("abc@test.com")
             .phone("123456789")
             .build();
+
+    SupplierDetails existingSupplier = new SupplierDetails();
+    existingSupplier.setId(1L);
+    existingSupplier.setName("ABC Suppliers");
+    existingSupplier.setCategory("Electronics");
+    existingSupplier.setStatus(SupplierStatus.ACTIVE);
+    existingSupplier.setEmail("abc@test.com");
+    existingSupplier.setPhone("123456789");
   }
 
   @Test
@@ -62,6 +75,10 @@ class SupplierServiceTest {
   void save_Success() throws Exception {
     // Arrange
     when(supplierRepository.save(anyString(), anyString(), any(Supplier.class))).thenReturn(1L);
+
+    doNothing()
+        .when(auditTrailService)
+        .record(anyString(), anyString(), any(), any(), anyLong(), anyString(), any(), any());
 
     // Act
     SupplierDto response = supplierService.save(CORRELATION_ID, LOG_KEY, supplierDto);
@@ -72,6 +89,9 @@ class SupplierServiceTest {
 
     // Verify
     verify(supplierRepository, times(1)).save(anyString(), anyString(), any(Supplier.class));
+
+    verify(auditTrailService, times(1))
+        .record(anyString(), anyString(), any(), any(), anyLong(), anyString(), any(), any());
   }
 
   @Test
@@ -110,12 +130,19 @@ class SupplierServiceTest {
   @DisplayName("update supplier success")
   void update_Success() throws Exception {
     // Arrange
+    Supplier existingSupplier = new Supplier();
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
     when(supplierRepository.update(anyString(), anyString(), any(Supplier.class))).thenReturn(1);
 
     // Act
     assertDoesNotThrow(() -> supplierService.update(CORRELATION_ID, LOG_KEY, supplierDto, 1L));
 
-    // Verify
+    // Assert + Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
     verify(supplierRepository, times(1)).update(anyString(), anyString(), any(Supplier.class));
   }
 
@@ -123,7 +150,8 @@ class SupplierServiceTest {
   @DisplayName("update supplier not found")
   void update_NotFound() throws Exception {
     // Arrange
-    when(supplierRepository.update(anyString(), anyString(), any(Supplier.class))).thenReturn(0);
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.empty());
 
     // Act & Assert
     assertThrows(
@@ -131,13 +159,18 @@ class SupplierServiceTest {
         () -> supplierService.update(CORRELATION_ID, LOG_KEY, supplierDto, 1L));
 
     // Verify
-    verify(supplierRepository, times(1)).update(anyString(), anyString(), any(Supplier.class));
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
   }
 
   @Test
   @DisplayName("update supplier duplicate exception")
   void update_DuplicateException() throws Exception {
     // Arrange
+    Supplier existingSupplier = new Supplier();
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
     when(supplierRepository.update(anyString(), anyString(), any(Supplier.class)))
         .thenThrow(new DuplicateKeyException("duplicate"));
 
@@ -147,6 +180,8 @@ class SupplierServiceTest {
         () -> supplierService.update(CORRELATION_ID, LOG_KEY, supplierDto, 1L));
 
     // Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
     verify(supplierRepository, times(1)).update(anyString(), anyString(), any(Supplier.class));
   }
 
@@ -154,6 +189,11 @@ class SupplierServiceTest {
   @DisplayName("update supplier generic exception")
   void update_GenericException() throws Exception {
     // Arrange
+    Supplier existingSupplier = new Supplier();
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
     when(supplierRepository.update(anyString(), anyString(), any(Supplier.class)))
         .thenThrow(new RuntimeException("DB error"));
 
@@ -163,6 +203,8 @@ class SupplierServiceTest {
         () -> supplierService.update(CORRELATION_ID, LOG_KEY, supplierDto, 1L));
 
     // Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
     verify(supplierRepository, times(1)).update(anyString(), anyString(), any(Supplier.class));
   }
 
@@ -170,12 +212,21 @@ class SupplierServiceTest {
   @DisplayName("delete supplier success")
   void delete_Success() throws Exception {
     // Arrange
+    Supplier existingSupplier = new Supplier();
+
+    existingSupplier.setStatus(String.valueOf(SupplierStatus.ACTIVE));
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
     when(supplierRepository.delete(anyString(), anyString(), anyLong())).thenReturn(1);
 
     // Act
     assertDoesNotThrow(() -> supplierService.delete(CORRELATION_ID, LOG_KEY, 1L));
 
-    // Verify
+    // Assert
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
     verify(supplierRepository, times(1)).delete(anyString(), anyString(), anyLong());
   }
 
@@ -183,7 +234,8 @@ class SupplierServiceTest {
   @DisplayName("delete supplier not found")
   void delete_NotFound() throws Exception {
     // Arrange
-    when(supplierRepository.delete(anyString(), anyString(), anyLong())).thenReturn(0);
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.empty());
 
     // Act & Assert
     assertThrows(
@@ -191,13 +243,18 @@ class SupplierServiceTest {
         () -> supplierService.delete(CORRELATION_ID, LOG_KEY, 1L));
 
     // Verify
-    verify(supplierRepository, times(1)).delete(anyString(), anyString(), anyLong());
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
   }
 
   @Test
   @DisplayName("delete supplier exception")
   void delete_Exception() throws Exception {
     // Arrange
+    Supplier existingSupplier = new Supplier();
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
     when(supplierRepository.delete(anyString(), anyString(), anyLong()))
         .thenThrow(new RuntimeException("DB error"));
 
@@ -207,6 +264,8 @@ class SupplierServiceTest {
         () -> supplierService.delete(CORRELATION_ID, LOG_KEY, 1L));
 
     // Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
     verify(supplierRepository, times(1)).delete(anyString(), anyString(), anyLong());
   }
 
@@ -298,5 +357,107 @@ class SupplierServiceTest {
     // Verify
     verify(supplierRepository, times(1))
         .findAll(anyString(), anyString(), anyInt(), anyInt(), anyString());
+  }
+
+  @Test
+  @DisplayName("update supplier - not updated (0 rows)")
+  void update_NotUpdated() throws Exception {
+    // Arrange
+    SupplierDetails existing = new SupplierDetails();
+    existing.setName("ABC");
+    existing.setCategory("Electronics");
+    existing.setEmail("old@mail.com");
+    existing.setPhone("111");
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(new Supplier())); // your service converts internally
+
+    when(supplierRepository.update(anyString(), anyString(), any(Supplier.class))).thenReturn(0);
+
+    // Act & Assert
+    assertThrows(
+        GeneralStatusCodeErrorException.class,
+        () -> supplierService.update(CORRELATION_ID, LOG_KEY, supplierDto, 1L));
+
+    // Verify
+    verify(supplierRepository).update(anyString(), anyString(), any(Supplier.class));
+  }
+
+  @Test
+  @DisplayName("update supplier - audit trail field changes covered")
+  void update_AuditFieldChanges() throws Exception {
+    // Arrange
+    Supplier existingSupplier = new Supplier();
+    existingSupplier.setId(1L);
+    existingSupplier.setName("Old Name");
+    existingSupplier.setCategory("Old Category");
+    existingSupplier.setStatus(String.valueOf(SupplierStatus.ACTIVE));
+    existingSupplier.setEmail("old@mail.com");
+    existingSupplier.setPhone("111");
+
+    SupplierDto updatedDto =
+        SupplierDto.builder()
+            .name("New Name")
+            .category("New Category")
+            .status(SupplierStatus.INACTIVE)
+            .email("new@mail.com")
+            .phone("999")
+            .build();
+
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(existingSupplier));
+
+    when(supplierRepository.update(anyString(), anyString(), any(Supplier.class))).thenReturn(1);
+
+    doNothing()
+        .when(auditTrailService)
+        .record(
+            anyString(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyString(),
+            anyString());
+
+    // Act
+    assertDoesNotThrow(() -> supplierService.update(CORRELATION_ID, LOG_KEY, updatedDto, 1L));
+
+    // Assert + Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
+    verify(supplierRepository, times(1)).update(anyString(), anyString(), any(Supplier.class));
+
+    verify(auditTrailService, times(1))
+        .record(
+            anyString(),
+            anyString(),
+            eq(AuditAction.UPDATE),
+            eq(AuditEntityType.SUPPLIER),
+            eq(1L),
+            eq("New Name"),
+            anyString(),
+            anyString());
+  }
+
+  @Test
+  @DisplayName("delete supplier - not deleted (0 rows)")
+  void delete_NotDeleted() throws Exception {
+    // Arrange
+    when(supplierRepository.findById(anyString(), anyString(), anyLong()))
+        .thenReturn(Optional.of(new Supplier()));
+
+    when(supplierRepository.delete(anyString(), anyString(), anyLong())).thenReturn(0);
+
+    // Act & Assert
+    assertThrows(
+        GeneralStatusCodeErrorException.class,
+        () -> supplierService.delete(CORRELATION_ID, LOG_KEY, 1L));
+
+    // Verify
+    verify(supplierRepository, times(1)).findById(anyString(), anyString(), anyLong());
+
+    verify(supplierRepository, times(1)).delete(anyString(), anyString(), anyLong());
   }
 }

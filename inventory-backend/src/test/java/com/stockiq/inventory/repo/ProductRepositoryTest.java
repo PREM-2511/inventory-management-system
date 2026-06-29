@@ -1,5 +1,7 @@
 package com.stockiq.inventory.repo;
 
+import com.stockiq.inventory.common.enums.product.ProductStatus;
+import com.stockiq.inventory.common.enums.stock.StockLevel;
 import com.stockiq.inventory.common.util.SecurityUtils;
 import com.stockiq.inventory.dto.ProductDto;
 import com.stockiq.inventory.entity.Product;
@@ -12,12 +14,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.KeyHolder;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -160,11 +166,16 @@ class ProductRepositoryTest {
   @DisplayName("findById returns product dto")
   void findById_ReturnsData_WhenExists() {
     // Arrange
-    ProductDto dto = new ProductDto();
+    ResultSet rs = mockProductResultSet(1L, "Test Product", "Electronics", 10, 2);
 
     when(jdbcTemplate.query(
-            anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class)))
-        .thenReturn(List.of(dto));
+            anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+        .thenAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              RowMapper<ProductDto> mapper = invocation.getArgument(2);
+              return List.of(mapper.mapRow(rs, 0));
+            });
 
     try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
       mocked.when(SecurityUtils::getCurrentUserIdAsLong).thenReturn(1L);
@@ -174,10 +185,12 @@ class ProductRepositoryTest {
 
       // Assert
       assertTrue(result.isPresent());
+        assertEquals(ProductStatus.IN_STOCK, result.get().getStatus());
+        assertEquals(StockLevel.NORMAL, result.get().getStockLevel());
 
       // Verify
       verify(jdbcTemplate, times(1))
-          .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
+          .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
     }
   }
 
@@ -209,11 +222,16 @@ class ProductRepositoryTest {
   @DisplayName("findAll with filters")
   void findAll_WithFilters() {
     // Arrange
-    ProductDto dto = new ProductDto();
+    ResultSet rs = mockProductResultSet(1L, "Test Product", "Electronics", 10, 2);
 
     when(jdbcTemplate.query(
-            anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class)))
-        .thenReturn(List.of(dto));
+            anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+        .thenAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              RowMapper<ProductDto> mapper = invocation.getArgument(2);
+              return List.of(mapper.mapRow(rs, 0));
+            });
 
     try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
       mocked.when(SecurityUtils::getCurrentUserIdAsLong).thenReturn(1L);
@@ -224,10 +242,12 @@ class ProductRepositoryTest {
 
       // Assert
       assertEquals(1, result.size());
+        assertEquals(ProductStatus.IN_STOCK, result.get(0).getStatus());
+        assertEquals(StockLevel.NORMAL, result.get(0).getStockLevel());
 
       // Verify
       verify(jdbcTemplate, times(1))
-          .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
+          .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
     }
   }
 
@@ -275,9 +295,16 @@ class ProductRepositoryTest {
   @DisplayName("getLowStockAlerts returns list")
   void getLowStock_ReturnsData() {
     // Arrange
+    ResultSet rs = mockProductResultSet(1L, "Test Product", "Electronics", 2, 5);
+
     when(jdbcTemplate.query(
-            anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class)))
-        .thenReturn(List.of(new ProductDto()));
+            anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+        .thenAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              RowMapper<ProductDto> mapper = invocation.getArgument(2);
+              return List.of(mapper.mapRow(rs, 0));
+            });
 
     try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
       mocked.when(SecurityUtils::getCurrentUserIdAsLong).thenReturn(1L);
@@ -287,10 +314,12 @@ class ProductRepositoryTest {
 
       // Assert
       assertEquals(1, result.size());
+        assertEquals(ProductStatus.CRITICAL, result.get(0).getStatus());
+        assertEquals(StockLevel.CRITICAL, result.get(0).getStockLevel());
 
       // Verify
       verify(jdbcTemplate, times(1))
-          .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
+          .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
     }
   }
 
@@ -298,11 +327,16 @@ class ProductRepositoryTest {
   @DisplayName("getAllLowStockProducts returns all low stock products")
   void getAllLowStockProducts_ReturnsData() {
     // Arrange
-    ProductDto dto = new ProductDto();
+    ResultSet rs = mockProductResultSet(1L, "Test Product", "Electronics", 2, 5);
 
     when(jdbcTemplate.query(
-            anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class)))
-        .thenReturn(List.of(dto));
+            anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+        .thenAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              RowMapper<ProductDto> mapper = invocation.getArgument(2);
+              return List.of(mapper.mapRow(rs, 0));
+            });
 
     // Act
     List<ProductDto> result = productRepository.getAllLowStockProducts(X_CORRELATION_ID, LOG_KEY);
@@ -310,9 +344,35 @@ class ProductRepositoryTest {
     // Assert
     assertNotNull(result);
     assertEquals(1, result.size());
+    assertEquals(ProductStatus.CRITICAL, result.get(0).getStatus());
+    assertEquals(StockLevel.CRITICAL, result.get(0).getStockLevel());
 
     // Verify
     verify(jdbcTemplate, times(1))
-        .query(anyString(), any(MapSqlParameterSource.class), any(BeanPropertyRowMapper.class));
+        .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
+  }
+
+    private ResultSet mockProductResultSet(
+      long id, String name, String category, int qty, int reorderPoint) {
+    ResultSet rs = mock(ResultSet.class);
+    Timestamp now = new Timestamp(System.currentTimeMillis());
+
+      try {
+        when(rs.getLong("id")).thenReturn(id);
+        when(rs.getObject("userId")).thenReturn(1L);
+        when(rs.getLong("userId")).thenReturn(1L);
+        when(rs.getString("name")).thenReturn(name);
+        when(rs.getString("category")).thenReturn(category);
+        when(rs.getInt("qty")).thenReturn(qty);
+        when(rs.getInt("reorder")).thenReturn(reorderPoint);
+        when(rs.getString("createdBy")).thenReturn("admin");
+        when(rs.getTimestamp("createdAt")).thenReturn(now);
+        when(rs.getString("updatedBy")).thenReturn("admin");
+        when(rs.getTimestamp("updatedAt")).thenReturn(now);
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
+      }
+
+    return rs;
   }
 }

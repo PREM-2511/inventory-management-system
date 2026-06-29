@@ -12,6 +12,9 @@ import com.stockiq.inventory.dto.CategoryDto;
 import com.stockiq.inventory.entity.Category;
 import com.stockiq.inventory.repository.CategoryRepository;
 import com.stockiq.inventory.service.CategoryService;
+import com.stockiq.inventory.service.AuditTrailService;
+import com.stockiq.inventory.common.enums.audit.AuditAction;
+import com.stockiq.inventory.common.enums.audit.AuditEntityType;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -34,9 +37,12 @@ public class CategoryServiceImpl implements CategoryService {
   private static final String DUPLICATE_EXCEPTION_LOG = "duplicate_exception_log";
 
   private final CategoryRepository categoryRepository;
+  private final AuditTrailService auditTrailService;
 
-  public CategoryServiceImpl(CategoryRepository categoryRepository) {
+  public CategoryServiceImpl(
+      CategoryRepository categoryRepository, AuditTrailService auditTrailService) {
     this.categoryRepository = categoryRepository;
+    this.auditTrailService = auditTrailService;
   }
 
   /**
@@ -70,6 +76,16 @@ public class CategoryServiceImpl implements CategoryService {
       categoryDto.setId(id);
       categoryDto.setStatus(Status.fromValue(category.getStatus()));
       categoryDto.setCreatedAt(category.getCreatedAt().toString());
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.CREATE,
+          AuditEntityType.CATEGORY,
+          id,
+          categoryDto.getName(),
+          null,
+          "Icon=" + categoryDto.getIcon() + ", Status=" + categoryDto.getStatus().name());
 
       return categoryDto;
 
@@ -151,6 +167,47 @@ public class CategoryServiceImpl implements CategoryService {
                 null));
       }
 
+      StringBuilder oldVal = new StringBuilder();
+      StringBuilder newVal = new StringBuilder();
+
+      if (existingCategory.getName() != null
+          && !existingCategory.getName().equals(categoryDto.getName())) {
+        oldVal.append("Name=").append(existingCategory.getName()).append("; ");
+        newVal.append("Name=").append(categoryDto.getName()).append("; ");
+      }
+      if (existingCategory.getIcon() != null
+          && !existingCategory.getIcon().equals(categoryDto.getIcon())) {
+        oldVal.append("Icon=").append(existingCategory.getIcon()).append("; ");
+        newVal.append("Icon=").append(categoryDto.getIcon()).append("; ");
+      }
+      Status newStatus =
+          categoryDto.getStatus() != null ? categoryDto.getStatus() : existingCategory.getStatus();
+      if (existingCategory.getStatus() != newStatus) {
+        oldVal.append("Status=").append(existingCategory.getStatus().name()).append("; ");
+        newVal.append("Status=").append(newStatus.name()).append("; ");
+      }
+
+      String oldString = oldVal.toString().trim();
+      String newString = newVal.toString().trim();
+      if (oldString.endsWith(";")) {
+        oldString = oldString.substring(0, oldString.length() - 1).trim();
+      }
+      if (newString.endsWith(";")) {
+        newString = newString.substring(0, newString.length() - 1).trim();
+      }
+
+      if (!oldString.isEmpty() || !newString.isEmpty()) {
+        auditTrailService.record(
+            correlationId,
+            logKey,
+            AuditAction.UPDATE,
+            AuditEntityType.CATEGORY,
+            id,
+            categoryDto.getName(),
+            oldString,
+            newString);
+      }
+
     } catch (DuplicateKeyException e) {
 
       ActivityLog.logError(
@@ -204,6 +261,8 @@ public class CategoryServiceImpl implements CategoryService {
 
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
+      CategoryDto existingCategory = findById(correlationId, logKey, id);
+
       int deleted = categoryRepository.delete(correlationId, logKey, id);
 
       if (deleted == 0) {
@@ -218,6 +277,16 @@ public class CategoryServiceImpl implements CategoryService {
                 new Date().toString(),
                 null));
       }
+
+      auditTrailService.record(
+          correlationId,
+          logKey,
+          AuditAction.DELETE,
+          AuditEntityType.CATEGORY,
+          id,
+          existingCategory.getName(),
+          "Icon=" + existingCategory.getIcon() + ", Status=" + existingCategory.getStatus().name(),
+          null);
 
     } catch (GeneralStatusCodeErrorException e) {
 
