@@ -32,9 +32,12 @@ const MainLayout = ({ children, title }) => {
 
   useEffect(() => {
     fetchUnreadCount();
-    // Poll every 30s when backend is reachable, slow down to 60s when it's not
-    const pollInterval = backendReachable ? 30000 : 60000;
-    const interval = setInterval(fetchUnreadCount, pollInterval);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !backendReachable) return;
+
+    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [user, backendReachable]);
   
