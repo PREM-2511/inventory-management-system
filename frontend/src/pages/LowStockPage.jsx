@@ -36,6 +36,27 @@ function LowStockPage() {
     return matchingSupplier ? matchingSupplier.name : 'Primary Supplier';
   };
 
+  const getSeverity = (alert) => {
+    const rawSeverity = String(alert.status || alert.stockLevel || '').trim().toUpperCase();
+
+    if (rawSeverity === 'CRITICAL' || rawSeverity === 'OUT_OF_STOCK') {
+      return 'Critical';
+    }
+
+    if (rawSeverity === 'LOW' || rawSeverity === 'LOW_STOCK') {
+      return 'Low';
+    }
+
+    const qty = Number(alert.qty || 0);
+    const reorder = Number(alert.reorder || 0);
+
+    if (qty <= 0 || (reorder > 0 && qty <= reorder / 2)) {
+      return 'Critical';
+    }
+
+    return 'Low';
+  };
+
   const handleReorder = (id, name, supplier) => {
     alert(`Reorder request for "${name}" successfully sent to "${supplier}"!`);
     setAlerts(alerts.filter(a => a.id !== id));
@@ -75,6 +96,7 @@ function LowStockPage() {
                 const supplierName = getSupplierForCategory(alert.category);
                 const ratio = alert.qty / (alert.reorder || 1);
                 const progressWidth = Math.min(100, Math.max(0, ratio * 100));
+                const severity = getSeverity(alert);
                 
                 return (
                   <div
@@ -85,11 +107,11 @@ function LowStockPage() {
                       <div className="flex items-center gap-3">
                         <p className="font-bold text-slate-200 text-base leading-none">{alert.name}</p>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase font-mono tracking-wider ${
-                          alert.status === 'Critical'
+                          severity === 'Critical'
                             ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                             : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                         }`}>
-                          {alert.status}
+                          {severity}
                         </span>
                       </div>
                       
@@ -97,7 +119,7 @@ function LowStockPage() {
                       <div className="space-y-1.5 max-w-md">
                         <div className="w-full bg-[#141b30] h-2 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${alert.status === 'Critical' ? 'bg-rose-500' : 'bg-amber-500'}`}
+                            className={`h-full rounded-full ${severity === 'Critical' ? 'bg-rose-500' : 'bg-amber-500'}`}
                             style={{ width: `${progressWidth}%` }}
                           />
                         </div>
