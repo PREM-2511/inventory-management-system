@@ -16,6 +16,23 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({ name: '', category: '', qty: 0, reorder: 0 });
 
+  const normalizeStatus = (status) => String(status || '').trim().toUpperCase().replace(/\s+/g, '_');
+
+  const getStatusLabel = (status) => {
+    switch (normalizeStatus(status)) {
+      case 'IN_STOCK':
+        return 'In stock';
+      case 'LOW_STOCK':
+        return 'Low stock';
+      case 'CRITICAL':
+        return 'Critical';
+      case 'OUT_OF_STOCK':
+        return 'Out of stock';
+      default:
+        return status || 'Unknown';
+    }
+  };
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -56,14 +73,14 @@ function ProductsPage() {
   }, []);
 
   const getStatusClass = (status) => {
-    switch (status) {
-      case 'In stock':
+    switch (normalizeStatus(status)) {
+      case 'IN_STOCK':
         return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-      case 'Low stock':
+      case 'LOW_STOCK':
         return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-      case 'Critical':
+      case 'CRITICAL':
         return 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-      case 'Out of stock':
+      case 'OUT_OF_STOCK':
         return 'bg-rose-600/20 text-rose-500 border border-rose-600/30 font-black';
       default:
         return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
@@ -204,7 +221,7 @@ function ProductsPage() {
                         <td className="p-4 text-center font-semibold text-slate-400 font-mono">{product.reorder}</td>
                         <td className="p-4 text-center">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-block ${getStatusClass(product.status)}`}>
-                            {product.status}
+                            {getStatusLabel(product.status)}
                           </span>
                         </td>
                         <td className="p-4">
