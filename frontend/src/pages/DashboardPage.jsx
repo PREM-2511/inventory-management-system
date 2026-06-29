@@ -13,9 +13,13 @@ function DashboardPage() {
   const [categories, setCategories] = useState([]);
   const [recentTx, setRecentTx] = useState([]);
   const [allTx, setAllTx] = useState([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState([]);
   const [error, setError] = useState('');
   const [activeCategoryIdx, setActiveCategoryIdx] = useState(null);
   const [hoveredTxPoint, setHoveredTxPoint] = useState(null);
+  const [hoveredMonthlyBar, setHoveredMonthlyBar] = useState(null);
+  const [hoveredCategoryBar, setHoveredCategoryBar] = useState(null);
+  const [hoveredLowStockBar, setHoveredLowStockBar] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -24,10 +28,11 @@ function DashboardPage() {
         setError('');
         
         // Parallel requests
-        const [summaryRes, categoriesRes, historyRes] = await Promise.all([
+        const [summaryRes, categoriesRes, historyRes, alertsRes] = await Promise.all([
           dashboardAPI.getSummary(),
           dashboardAPI.getCategoryDistribution(),
-          stockAPI.getHistory()
+          stockAPI.getHistory(),
+          stockAPI.getLowStockAlerts()
         ]);
 
         setSummary(summaryRes.data);
@@ -36,6 +41,7 @@ function DashboardPage() {
         const historyData = historyRes.data || [];
         setAllTx(historyData);
         setRecentTx(historyData.slice(0, 5));
+        setLowStockAlerts(alertsRes.data || []);
       } catch (err) {
         console.error('Dashboard loading error:', err);
         setError(err.message || 'Failed to fetch dashboard statistics.');
@@ -177,6 +183,43 @@ function DashboardPage() {
     return { points, labels, maxVal };
   };
 
+  // Group transaction history into monthly buckets for the past 6 months
+  const getMonthlyMovements = () => {
+    const months = [];
+    const now = new Date();
+    // Generate the last 6 months (chronological order)
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        label: d.toLocaleString('default', { month: 'short' }),
+        inQty: 0,
+        outQty: 0
+      });
+    }
+
+    // Process all transactions
+    allTx.forEach(tx => {
+      if (!tx.date) return;
+      const dateStr = tx.date.includes(' ') ? tx.date.replace(' ', 'T') : tx.date;
+      const txDate = new Date(dateStr);
+      if (isNaN(txDate.getTime())) return;
+
+      const match = months.find(m => m.year === txDate.getFullYear() && m.month === txDate.getMonth());
+      if (match) {
+        const qty = tx.qty || 0;
+        if (tx.type?.toUpperCase() === 'IN') {
+          match.inQty += qty;
+        } else if (tx.type?.toUpperCase() === 'OUT') {
+          match.outQty += qty;
+        }
+      }
+    });
+
+    return months;
+  };
+
   const { points: trendPoints, maxVal: trendMax } = getTrendData();
 
   // Smooth cubic bezier through points
@@ -200,6 +243,12 @@ function DashboardPage() {
     v,
     y: 10 + 60 - (v / trendMax) * 55
   }));
+
+  const handleReorder = (id, name) => {
+    alert(`Reorder request for "${name}" successfully sent!`);
+    setLowStockAlerts(prev => prev.filter(a => a.id !== id));
+    setSummary(prev => ({ ...prev, lowStock: Math.max(0, prev.lowStock - 1) }));
+  };
 
   return (
     <MainLayout title="Dashboard">
@@ -409,6 +458,302 @@ function DashboardPage() {
                 </div>
               ) : (
                 <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-12">No transaction data available yet.</p>
+              )}
+            </div>
+
+            {/* ROW 2: DETAILED ANALYTICS CHARTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Monthly Stock Movements Card */}
+              <div className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm relative flex flex-col justify-between">
+                <div>
+                  <div className="flex flex-col gap-1 mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Monthly Stock Movements</h3>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Total stock IN vs OUT aggregated per month (last 6 months)</p>
+                  </div>
+                  {allTx.length > 0 ? (
+                    <div className="relative pt-2">
+                      <svg viewBox="0 0 100 60" className="w-full" style={{ height: '180px' }} preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="inBarGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity="0.20" />
+                          </linearGradient>
+                          <linearGradient id="outBarGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.85" />
+                            <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.20" />
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Monthly chart grid lines */}
+                        {(() => {
+                          const monthlyData = getMonthlyMovements();
+                          const maxMonthlyQty = Math.max(...monthlyData.map(m => Math.max(m.inQty, m.outQty)), 10);
+                          return [0, 0.5, 1].map((ratio) => {
+                            const y = 5 + 43 * (1 - ratio);
+                            const val = Math.round(ratio * maxMonthlyQty);
+                            return (
+                              <g key={ratio}>
+                                <line x1="8" y1={y} x2="96" y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="0.3" strokeDasharray="1.5 1.5" className="text-slate-900 dark:text-white" />
+                                <text x="6" y={y + 1} fontSize="2.2" textAnchor="end" className="fill-slate-400 dark:fill-slate-600 font-mono">{val}</text>
+                              </g>
+                            );
+                          });
+                        })()}
+                        
+                        {/* Baseline */}
+                        <line x1="8" y1="48" x2="96" y2="48" stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.4" className="text-slate-900 dark:text-white" />
+                        
+                        {/* Bars rendering */}
+                        {(() => {
+                          const monthlyData = getMonthlyMovements();
+                          const maxMonthlyQty = Math.max(...monthlyData.map(m => Math.max(m.inQty, m.outQty)), 10);
+                          return monthlyData.map((data, idx) => {
+                            const xCenter = 17 + idx * 15;
+                            const barWidth = 3.2;
+                            
+                            const inHeight = (data.inQty / maxMonthlyQty) * 43;
+                            const inY = 48 - inHeight;
+                            
+                            const outHeight = (data.outQty / maxMonthlyQty) * 43;
+                            const outY = 48 - outHeight;
+                            
+                            return (
+                              <g key={idx}>
+                                {/* IN bar */}
+                                <rect
+                                  x={xCenter - barWidth - 0.6}
+                                  y={inY}
+                                  width={barWidth}
+                                  height={inHeight || 0.5}
+                                  rx="0.6"
+                                  fill="url(#inBarGrad)"
+                                  className="cursor-pointer transition-all duration-200 hover:brightness-110"
+                                  onMouseEnter={() => setHoveredMonthlyBar({ monthIdx: idx, type: 'IN', val: data.inQty, label: data.label, x: xCenter - barWidth/2 - 0.6, y: inY })}
+                                  onMouseLeave={() => setHoveredMonthlyBar(null)}
+                                />
+                                
+                                {/* OUT bar */}
+                                <rect
+                                  x={xCenter + 0.6}
+                                  y={outY}
+                                  width={barWidth}
+                                  height={outHeight || 0.5}
+                                  rx="0.6"
+                                  fill="url(#outBarGrad)"
+                                  className="cursor-pointer transition-all duration-200 hover:brightness-110"
+                                  onMouseEnter={() => setHoveredMonthlyBar({ monthIdx: idx, type: 'OUT', val: data.outQty, label: data.label, x: xCenter + barWidth/2 + 0.6, y: outY })}
+                                  onMouseLeave={() => setHoveredMonthlyBar(null)}
+                                />
+                                
+                                {/* Month Label */}
+                                <text x={xCenter} y="54" fontSize="2.8" textAnchor="middle" className="fill-slate-400 dark:fill-slate-500 font-mono font-bold">{data.label}</text>
+                              </g>
+                            );
+                          });
+                        })()}
+                      </svg>
+                      
+                      {/* Tooltip */}
+                      {hoveredMonthlyBar && (
+                        <div
+                          className="absolute pointer-events-none z-20 bg-slate-950/95 border border-slate-800 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-md min-w-max"
+                          style={{
+                            left: `${hoveredMonthlyBar.x}%`,
+                            bottom: `${100 - (hoveredMonthlyBar.y / 60) * 100 + 4}%`,
+                            transform: 'translateX(-50%)'
+                          }}
+                        >
+                          <p className="text-[10px] font-bold text-white mb-0.5">{hoveredMonthlyBar.label} - Stock {hoveredMonthlyBar.type}</p>
+                          <p className={`text-[10px] font-mono font-black ${hoveredMonthlyBar.type === 'IN' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {hoveredMonthlyBar.val} units
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-16">No monthly transaction data available yet.</p>
+                  )}
+                </div>
+                {/* Monthly legend */}
+                <div className="flex gap-4 items-center justify-end mt-4 pt-3 border-t border-slate-100 dark:border-slate-900/40 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
+                    <span>Inbound (IN)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-rose-500 inline-block" />
+                    <span>Outbound (OUT)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock by Category Card */}
+              <div className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm relative flex flex-col justify-between">
+                <div>
+                  <div className="flex flex-col gap-1 mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Stock Volume by Category</h3>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Total physical stock units currently grouped by product category</p>
+                  </div>
+                  {donutSlices.length > 0 ? (
+                    <div className="space-y-4 pt-1">
+                      {(() => {
+                        const sortedCategories = [...donutSlices].sort((a, b) => (b.totalStock || 0) - (a.totalStock || 0));
+                        const maxStock = Math.max(...sortedCategories.map(c => c.totalStock || 0), 1);
+                        
+                        return sortedCategories.map((category, idx) => {
+                          const pct = maxStock > 0 ? ((category.totalStock || 0) / maxStock) * 100 : 0;
+                          return (
+                            <div
+                              key={idx}
+                              className="space-y-1.5 relative group"
+                              onMouseEnter={() => setHoveredCategoryBar({ idx, name: category.name, stock: category.totalStock || 0, count: category.count, pct: category.percentage })}
+                              onMouseLeave={() => setHoveredCategoryBar(null)}
+                            >
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: category.color }} />
+                                  {category.name}
+                                </span>
+                                <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                                  <strong className="text-slate-800 dark:text-white font-black">{category.totalStock || 0}</strong> units 
+                                  <span className="mx-1">•</span> 
+                                  {category.count} items
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 dark:bg-[#141b30] h-2.5 rounded-full overflow-hidden border border-slate-200/20 dark:border-slate-800/40 relative">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500 group-hover:brightness-110"
+                                  style={{
+                                    width: `${pct}%`,
+                                    backgroundColor: category.color,
+                                    boxShadow: `0 0 8px ${category.color}30`
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  ) : (
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-16">No category stock data available yet.</p>
+                  )}
+                </div>
+                
+                {hoveredCategoryBar && (
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20 bg-slate-950/95 border border-slate-800 rounded-xl px-4 py-2.5 shadow-2xl backdrop-blur-md min-w-max text-center">
+                    <p className="text-xs font-black text-white">{hoveredCategoryBar.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Total Stock: <span className="text-white font-bold">{hoveredCategoryBar.stock} units</span>
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Products Count: <span className="text-white font-bold">{hoveredCategoryBar.count} products</span>
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Category Share: <span className="text-blue-400 font-bold">{hoveredCategoryBar.pct}%</span>
+                    </p>
+                  </div>
+                )}
+                
+                {/* Empty element to align height with monthly bar card */}
+                <div className="h-6" />
+              </div>
+            </div>
+
+            {/* ROW 3: LOW STOCK TRENDS */}
+            <div className="bg-white dark:bg-[#0b1224]/85 border border-slate-200/80 dark:border-[#1e293b]/70 p-6 rounded-2xl shadow-lg shadow-slate-100 dark:shadow-black/30 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Low Stock Trends & Risks</h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Critical products with stock levels below reorder limits</p>
+                </div>
+                <button
+                  onClick={() => navigate('/low-stock')}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors font-semibold"
+                >
+                  Manage Alerts
+                </button>
+              </div>
+
+              {lowStockAlerts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {(() => {
+                    const criticalItems = [...lowStockAlerts]
+                      .sort((a, b) => {
+                        const ratioA = a.qty / (a.reorder || 1);
+                        const ratioB = b.qty / (b.reorder || 1);
+                        return ratioA - ratioB;
+                      })
+                      .slice(0, 4);
+                    
+                    return criticalItems.map((item, idx) => {
+                      const ratio = item.qty / (item.reorder || 1);
+                      const progressWidth = Math.min(100, Math.max(0, ratio * 100));
+                      const isCritical = item.status === 'Critical' || ratio <= 0.3;
+                      return (
+                        <div
+                          key={item.id || idx}
+                          className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all ${
+                            isCritical
+                              ? 'bg-rose-500/5 border-rose-500/10 hover:border-rose-500/30'
+                              : 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/30'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs">{item.name}</h4>
+                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-medium block mt-0.5">{item.category}</span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase font-mono tracking-wider ${
+                              isCritical
+                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {isCritical ? 'Critical Deficit' : 'Low Stock'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                              <span>Current: <strong className="text-slate-800 dark:text-white">{item.qty}</strong></span>
+                              <span>Threshold: {item.reorder}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-[#141b30] h-2 rounded-full overflow-hidden border border-slate-200/20 dark:border-slate-800/40">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  isCritical ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e50]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b50]'
+                                }`}
+                                style={{ width: `${progressWidth}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-900/40">
+                            <span className="text-[9px] text-slate-400">
+                              Deficit: <span className="font-bold font-mono text-rose-500/90">-{Math.max(0, item.reorder - item.qty)} units</span>
+                            </span>
+                            <button
+                              onClick={() => handleReorder(item.id, item.name)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                                isCritical
+                                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 border border-rose-500/20'
+                                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 border border-blue-500/20'
+                              }`}
+                            >
+                              Quick Reorder
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                <div className="p-8 border border-emerald-500/20 bg-emerald-500/5 rounded-xl text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-xl text-emerald-400">✓</span>
+                  <p className="text-xs font-bold text-emerald-400">All product stock levels are fully healthy!</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">No low stock thresholds have been breached.</p>
+                </div>
               )}
             </div>
 
