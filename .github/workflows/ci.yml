@@ -4,13 +4,12 @@ on:
   push:
     branches:
       - main
-      - master
-      - develop
+      - development
+
   pull_request:
     branches:
       - main
-      - master
-      - develop
+      - development
 
 jobs:
 
@@ -34,10 +33,12 @@ jobs:
           cache: maven
 
       - name: Build Backend
-        run: mvn clean verify
+        run: mvn clean verify -e
 
       - name: Build Docker Image
         run: docker build -t inventory-backend .
+        working-directory: inventory-backend
+
 
   frontend:
     name: Frontend Build
@@ -66,3 +67,4 @@ jobs:
 
       - name: Build Docker Image
         run: docker build -t inventory-frontend .
+        working-directory: frontend
