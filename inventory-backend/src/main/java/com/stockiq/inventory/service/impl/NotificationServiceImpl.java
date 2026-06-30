@@ -276,21 +276,23 @@ public class NotificationServiceImpl implements NotificationService {
       ActivityLog.logInfo(correlationId, logKey, SERVICE_IMPL, INIT_LOG);
 
       // First verify the notification belongs to the current user
-      notificationRepository
-          .findById(correlationId, logKey, id)
-          .orElseThrow(
-              () ->
-                  new GeneralStatusCodeErrorException(
-                      new ErrorMessage(
-                          "Notification not found",
-                          "Notification Update Failed",
-                          HttpStatus.NOT_FOUND,
-                          HttpStatusCodeEnum.NOT_FOUND.getValue(),
-                          ErrorMessageCodeEnum.NOTIFICATION_NOT_FOUND.getCode(),
-                          LocalDateTime.now()
-                              .format(
-                                  DateTimeFormatter.ofPattern(SystemFormats.DATE_TIME_FORMAT_1)),
-                          null)));
+      Notification notification =
+          notificationRepository
+              .findById(correlationId, logKey, id)
+              .orElseThrow(
+                  () ->
+                      new GeneralStatusCodeErrorException(
+                          new ErrorMessage(
+                              "Notification not found",
+                              "Notification Update Failed",
+                              HttpStatus.NOT_FOUND,
+                              HttpStatusCodeEnum.NOT_FOUND.getValue(),
+                              ErrorMessageCodeEnum.NOTIFICATION_NOT_FOUND.getCode(),
+                              LocalDateTime.now()
+                                  .format(
+                                      DateTimeFormatter.ofPattern(
+                                          SystemFormats.DATE_TIME_FORMAT_1)),
+                              null)));
 
       // Mark as read (idempotent - already read notifications return 0 updated rows, which is fine)
       notificationRepository.markOneRead(correlationId, logKey, id);
