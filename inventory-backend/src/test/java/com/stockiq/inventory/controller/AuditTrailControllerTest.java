@@ -60,27 +60,32 @@ class AuditTrailControllerTest {
   }
 
   @Test
-  @DisplayName("list Service Throws Exception Wrapped into GeneralStatusCodeErrorException")
-  void list_ServiceThrowsException_ReturnsGeneralStatusCodeErrorException() throws Exception {
+  @DisplayName("list Service Throws Exception")
+  void list_ServiceThrowsException_ReturnsRuntimeException() throws Exception {
     // Arrange
     when(auditTrailService.getAuditTrail(
-            anyString(), anyString(), anyInt(), anyInt(), any(), any(), any()))
+        anyString(), anyString(), anyInt(), anyInt(),
+        anyString(), anyString(), anyString()))
         .thenThrow(new RuntimeException("DB error"));
 
     // Act & Assert
-    GeneralStatusCodeErrorException exception =
+    RuntimeException exception =
         assertThrows(
-            GeneralStatusCodeErrorException.class,
+            RuntimeException.class,
             () ->
                 auditTrailController.list(
-                    CORRELATION_ID, 1, 10, "USER", "2026-01-01", "2026-01-02"));
+                    CORRELATION_ID,
+                    1,
+                    10,
+                    "USER",
+                    "2026-01-01",
+                    "2026-01-02"));
 
     assertNotNull(exception);
 
-    // Verify
     verify(auditTrailService)
         .getAuditTrail(
-            anyString(),
+            eq(CORRELATION_ID),
             anyString(),
             eq(1),
             eq(10),
