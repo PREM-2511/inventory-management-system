@@ -1,0 +1,49 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/v1
+
+spring:
+  profiles:
+    active: ${SPRING_PROFILE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/inventory_db}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+app:
+  name: StockIQ Inventory Management System
+
+  notification:
+    delete-days: 30
+    batch-size: 100
+    cron: "0 0 4 * * *"
+    low-stock-cron: "*/30 * * * * *"
+    time-zone: Asia/Colombo
+    date-time-format: "yyyy-MM-dd HH:mm:ss"
+
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:google-client-id}
+    client-secret: ${GOOGLE_CLIENT_SECRET:google-client-secret}
+
+  github:
+    client-id: ${GITHUB_CLIENT_ID:github-client-id}
+    client-secret: ${GITHUB_CLIENT_SECRET:github-client-secret}
