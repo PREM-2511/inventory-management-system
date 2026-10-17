@@ -305,3 +305,9 @@ If you are developing locally without Docker:
     npm run dev
     ```
     Open `http://localhost:5173` in your browser. The Vite server is configured to proxy all `/api` traffic automatically to the backend on `http://localhost:8080`.
+
+## DevOps Lab Implementation
+
+This project is used to demonstrate an end-to-end DevOps
+pipeline using GitHub Actions for automated build and
+test validation, with Docker image build verification.
